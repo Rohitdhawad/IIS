@@ -1,0 +1,6 @@
+EVIDENCE_ID,CASE_ID,EVIDENCE_TYPE,SOURCE,DATE,RELATED_ENTITY,DESCRIPTION
+E-001,IIS-2026-001,CCTV,Warehouse-W17,2026-06-14,Rohan Mehta,"Rohan Mehta observed entering Warehouse-W17."
+E-002,IIS-2026-001,CCTV,Warehouse-W17,2026-06-14,Arjun Kale,"Vehicle registered to Arjun Kale observed at Warehouse-W17."
+E-003,IIS-2026-001,Financial Record,Bank-Record-01,2026-06-14,Rohan Mehta,"Transaction of INR 185000 to Neel Shah."
+E-004,IIS-2026-001,CDR,Telecom-Record-01,2026-06-14,Arjun Kale,"Multiple communications with Rohan Mehta and Sameer Joshi."
+E-005,IIS-2026-001,CCTV,Warehouse-W17,2026-06-16,Sameer Joshi,"Sameer Joshi observed near Warehouse-W17."
