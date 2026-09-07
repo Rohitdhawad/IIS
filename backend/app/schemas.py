@@ -1,8 +1,6 @@
-"""
-Pydantic schemas for API responses.
-"""
+"""API response schemas for IIS extracted evidence."""
 from datetime import datetime
-from typing import Optional, Any
+from typing import Any, Optional
 
 from pydantic import BaseModel, ConfigDict
 
@@ -16,7 +14,6 @@ class CaseOut(BaseModel):
 
 
 class CaseSummaryOut(CaseOut):
-    num_phases: int
     num_entities: int
     num_relationships: int
 
@@ -24,11 +21,10 @@ class CaseSummaryOut(CaseOut):
 class EntityOut(BaseModel):
     model_config = ConfigDict(from_attributes=True)
     entity_id: str
-    case_id: Optional[str] = None
+    case_id: str
     type: str
     label: str
-    raw_actor_id: Optional[str] = None
-    attributes: dict = {}
+    attributes: dict[str, Any] = {}
 
 
 class RelationshipOut(BaseModel):
@@ -37,34 +33,12 @@ class RelationshipOut(BaseModel):
     target_id: str
     type: str
     weight: int
-    phase: Optional[int] = None
-
-
-class PhaseSummaryOut(BaseModel):
-    model_config = ConfigDict(from_attributes=True)
-    phase: int
-    num_actors: int
-    num_calls: int
-    num_communities: int
-    bridge_entities: list[str] = []
-
-
-class EntityPhaseMetricOut(BaseModel):
-    model_config = ConfigDict(from_attributes=True)
-    entity_id: str
-    phase: int
-    degree: int
-    degree_weighted: int
-    betweenness: float
-    num_communities_touched: int
-    is_bridge_candidate: bool
-    bridged_communities: list[str] = []
-    reasons: list[str] = []
-    rank: int
+    confidence: float
+    observed_at: Optional[datetime] = None
+    attributes: dict[str, Any] = {}
 
 
 class EntityEvidenceOut(BaseModel):
     entity_id: str
-    phase: Optional[int] = None
-    outgoing_calls: list[dict[str, Any]] = []
-    incoming_calls: list[dict[str, Any]] = []
+    outgoing_relationships: list[RelationshipOut]
+    incoming_relationships: list[RelationshipOut]

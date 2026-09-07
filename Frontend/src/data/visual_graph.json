@@ -1,0 +1,531 @@
+{
+  "nodes": [
+    {
+      "entity_id": "person:rohan-mehta",
+      "type": "Person",
+      "label": "Rohan Mehta",
+      "attributes": {}
+    },
+    {
+      "entity_id": "person:arjun-kale",
+      "type": "Person",
+      "label": "Arjun Kale",
+      "attributes": {}
+    },
+    {
+      "entity_id": "person:neel-shah",
+      "type": "Person",
+      "label": "Neel Shah",
+      "attributes": {}
+    },
+    {
+      "entity_id": "person:sameer-joshi",
+      "type": "Person",
+      "label": "Sameer Joshi",
+      "attributes": {}
+    },
+    {
+      "entity_id": "vehicle:mh12ab4821",
+      "type": "Vehicle",
+      "label": "MH12AB4821",
+      "attributes": {
+        "vehicle_type": "Sedan"
+      }
+    },
+    {
+      "entity_id": "location:warehouse-w17",
+      "type": "Location",
+      "label": "Warehouse-W17",
+      "attributes": {}
+    },
+    {
+      "entity_id": "vehicle:mh14cd7319",
+      "type": "Vehicle",
+      "label": "MH14CD7319",
+      "attributes": {
+        "vehicle_type": "SUV"
+      }
+    }
+  ],
+  "relationships": [
+    {
+      "relationship_id": "C-001",
+      "source": "person:rohan-mehta",
+      "target": "person:arjun-kale",
+      "type": "CALLED",
+      "observed_at": "2026-06-14T09:12:00",
+      "evidence": {
+        "document": "02_CDR.csv",
+        "record_id": "C-001"
+      },
+      "confidence": 1.0,
+      "attributes": {
+        "duration_seconds": 184
+      }
+    },
+    {
+      "relationship_id": "C-002",
+      "source": "person:arjun-kale",
+      "target": "person:sameer-joshi",
+      "type": "CALLED",
+      "observed_at": "2026-06-14T09:47:00",
+      "evidence": {
+        "document": "02_CDR.csv",
+        "record_id": "C-002"
+      },
+      "confidence": 1.0,
+      "attributes": {
+        "duration_seconds": 96
+      }
+    },
+    {
+      "relationship_id": "C-003",
+      "source": "person:sameer-joshi",
+      "target": "person:neel-shah",
+      "type": "CALLED",
+      "observed_at": "2026-06-14T10:15:00",
+      "evidence": {
+        "document": "02_CDR.csv",
+        "record_id": "C-003"
+      },
+      "confidence": 1.0,
+      "attributes": {
+        "duration_seconds": 212
+      }
+    },
+    {
+      "relationship_id": "C-004",
+      "source": "person:rohan-mehta",
+      "target": "person:arjun-kale",
+      "type": "CALLED",
+      "observed_at": "2026-06-14T11:04:00",
+      "evidence": {
+        "document": "02_CDR.csv",
+        "record_id": "C-004"
+      },
+      "confidence": 1.0,
+      "attributes": {
+        "duration_seconds": 321
+      }
+    },
+    {
+      "relationship_id": "C-005",
+      "source": "person:arjun-kale",
+      "target": "person:neel-shah",
+      "type": "CALLED",
+      "observed_at": "2026-06-14T13:26:00",
+      "evidence": {
+        "document": "02_CDR.csv",
+        "record_id": "C-005"
+      },
+      "confidence": 1.0,
+      "attributes": {
+        "duration_seconds": 143
+      }
+    },
+    {
+      "relationship_id": "C-006",
+      "source": "person:neel-shah",
+      "target": "person:sameer-joshi",
+      "type": "CALLED",
+      "observed_at": "2026-06-15T08:42:00",
+      "evidence": {
+        "document": "02_CDR.csv",
+        "record_id": "C-006"
+      },
+      "confidence": 1.0,
+      "attributes": {
+        "duration_seconds": 87
+      }
+    },
+    {
+      "relationship_id": "C-008",
+      "source": "person:sameer-joshi",
+      "target": "person:arjun-kale",
+      "type": "CALLED",
+      "observed_at": "2026-06-15T18:31:00",
+      "evidence": {
+        "document": "02_CDR.csv",
+        "record_id": "C-008"
+      },
+      "confidence": 1.0,
+      "attributes": {
+        "duration_seconds": 175
+      }
+    },
+    {
+      "relationship_id": "C-009",
+      "source": "person:arjun-kale",
+      "target": "person:rohan-mehta",
+      "type": "CALLED",
+      "observed_at": "2026-06-16T09:02:00",
+      "evidence": {
+        "document": "02_CDR.csv",
+        "record_id": "C-009"
+      },
+      "confidence": 1.0,
+      "attributes": {
+        "duration_seconds": 231
+      }
+    },
+    {
+      "relationship_id": "C-010",
+      "source": "person:neel-shah",
+      "target": "person:arjun-kale",
+      "type": "CALLED",
+      "observed_at": "2026-06-16T21:14:00",
+      "evidence": {
+        "document": "02_CDR.csv",
+        "record_id": "C-010"
+      },
+      "confidence": 1.0,
+      "attributes": {
+        "duration_seconds": 119
+      }
+    },
+    {
+      "relationship_id": "TX-001",
+      "source": "person:rohan-mehta",
+      "target": "person:neel-shah",
+      "type": "TRANSFERRED_TO",
+      "observed_at": "2026-06-14T10:32:00",
+      "evidence": {
+        "document": "03_Financial_Transactions.csv",
+        "record_id": "TX-001"
+      },
+      "confidence": 1.0,
+      "attributes": {
+        "amount": 185000.0,
+        "purpose": "Consulting",
+        "location": "Pune",
+        "account_reference": "ACC-7842"
+      }
+    },
+    {
+      "relationship_id": "VR-002:location",
+      "source": "vehicle:mh12ab4821",
+      "target": "location:warehouse-w17",
+      "type": "OBSERVED_AT",
+      "observed_at": "2026-06-14T11:42:00",
+      "evidence": {
+        "document": "04_Vehicle_Records.csv",
+        "record_id": "VR-002"
+      },
+      "confidence": 1.0,
+      "attributes": {
+        "observation_source": "CCTV"
+      }
+    },
+    {
+      "relationship_id": "VR-003:location",
+      "source": "vehicle:mh14cd7319",
+      "target": "location:warehouse-w17",
+      "type": "OBSERVED_AT",
+      "observed_at": "2026-06-14T12:08:00",
+      "evidence": {
+        "document": "04_Vehicle_Records.csv",
+        "record_id": "VR-003"
+      },
+      "confidence": 1.0,
+      "attributes": {
+        "observation_source": "CCTV"
+      }
+    },
+    {
+      "relationship_id": "VR-005:location",
+      "source": "vehicle:mh12ab4821",
+      "target": "location:warehouse-w17",
+      "type": "OBSERVED_AT",
+      "observed_at": "2026-06-16T10:46:00",
+      "evidence": {
+        "document": "04_Vehicle_Records.csv",
+        "record_id": "VR-005"
+      },
+      "confidence": 1.0,
+      "attributes": {
+        "observation_source": "CCTV"
+      }
+    },
+    {
+      "relationship_id": "VR-006:location",
+      "source": "vehicle:mh14cd7319",
+      "target": "location:warehouse-w17",
+      "type": "OBSERVED_AT",
+      "observed_at": "2026-06-16T11:02:00",
+      "evidence": {
+        "document": "04_Vehicle_Records.csv",
+        "record_id": "VR-006"
+      },
+      "confidence": 1.0,
+      "attributes": {
+        "observation_source": "CCTV"
+      }
+    },
+    {
+      "relationship_id": "H-001:associate",
+      "source": "person:arjun-kale",
+      "target": "person:neel-shah",
+      "type": "HISTORICAL_ASSOCIATION",
+      "observed_at": null,
+      "evidence": {
+        "document": "07_Criminal_History.csv",
+        "record_id": "H-001"
+      },
+      "confidence": 1.0,
+      "attributes": {}
+    },
+    {
+      "relationship_id": "H-002:associate",
+      "source": "person:neel-shah",
+      "target": "person:arjun-kale",
+      "type": "HISTORICAL_ASSOCIATION",
+      "observed_at": null,
+      "evidence": {
+        "document": "07_Criminal_History.csv",
+        "record_id": "H-002"
+      },
+      "confidence": 1.0,
+      "attributes": {}
+    },
+    {
+      "relationship_id": "H-003:associate",
+      "source": "person:sameer-joshi",
+      "target": "person:arjun-kale",
+      "type": "HISTORICAL_ASSOCIATION",
+      "observed_at": null,
+      "evidence": {
+        "document": "07_Criminal_History.csv",
+        "record_id": "H-003"
+      },
+      "confidence": 1.0,
+      "attributes": {}
+    },
+    {
+      "relationship_id": "SR-001:person:rohan-mehta",
+      "source": "person:rohan-mehta",
+      "target": "location:warehouse-w17",
+      "type": "OBSERVED_AT",
+      "observed_at": "2026-06-14T11:35:00",
+      "evidence": {
+        "document": "05_Surveillance_Report_01.txt",
+        "record_id": "SR-001"
+      },
+      "confidence": 1.0,
+      "attributes": {}
+    },
+    {
+      "relationship_id": "SR-001:person:arjun-kale",
+      "source": "person:arjun-kale",
+      "target": "location:warehouse-w17",
+      "type": "OBSERVED_AT",
+      "observed_at": "2026-06-14T11:35:00",
+      "evidence": {
+        "document": "05_Surveillance_Report_01.txt",
+        "record_id": "SR-001"
+      },
+      "confidence": 1.0,
+      "attributes": {}
+    },
+    {
+      "relationship_id": "SR-001:vehicle:MH12AB4821",
+      "source": "vehicle:mh12ab4821",
+      "target": "location:warehouse-w17",
+      "type": "OBSERVED_AT",
+      "observed_at": "2026-06-14T11:35:00",
+      "evidence": {
+        "document": "05_Surveillance_Report_01.txt",
+        "record_id": "SR-001"
+      },
+      "confidence": 1.0,
+      "attributes": {}
+    },
+    {
+      "relationship_id": "SR-001:vehicle:MH14CD7319",
+      "source": "vehicle:mh14cd7319",
+      "target": "location:warehouse-w17",
+      "type": "OBSERVED_AT",
+      "observed_at": "2026-06-14T11:35:00",
+      "evidence": {
+        "document": "05_Surveillance_Report_01.txt",
+        "record_id": "SR-001"
+      },
+      "confidence": 1.0,
+      "attributes": {}
+    },
+    {
+      "relationship_id": "SR-002:person:rohan-mehta",
+      "source": "person:rohan-mehta",
+      "target": "location:warehouse-w17",
+      "type": "OBSERVED_AT",
+      "observed_at": "2026-06-16T10:40:00",
+      "evidence": {
+        "document": "06_Surveillance_Report_02.txt",
+        "record_id": "SR-002"
+      },
+      "confidence": 1.0,
+      "attributes": {}
+    },
+    {
+      "relationship_id": "SR-002:person:arjun-kale",
+      "source": "person:arjun-kale",
+      "target": "location:warehouse-w17",
+      "type": "OBSERVED_AT",
+      "observed_at": "2026-06-16T10:40:00",
+      "evidence": {
+        "document": "06_Surveillance_Report_02.txt",
+        "record_id": "SR-002"
+      },
+      "confidence": 1.0,
+      "attributes": {}
+    },
+    {
+      "relationship_id": "SR-002:person:sameer-joshi",
+      "source": "person:sameer-joshi",
+      "target": "location:warehouse-w17",
+      "type": "OBSERVED_AT",
+      "observed_at": "2026-06-16T10:40:00",
+      "evidence": {
+        "document": "06_Surveillance_Report_02.txt",
+        "record_id": "SR-002"
+      },
+      "confidence": 1.0,
+      "attributes": {}
+    }
+  ],
+  "anomalies": [
+    {
+      "anomaly_id": "repeated-contact:person:arjun-kale:person:rohan-mehta",
+      "type": "REPEATED_COMMUNICATION",
+      "score": 3,
+      "entity_ids": [
+        "person:arjun-kale",
+        "person:rohan-mehta"
+      ],
+      "relationship_ids": [
+        "C-001",
+        "C-004",
+        "C-009"
+      ],
+      "reason": "3 recorded calls between the same two people."
+    },
+    {
+      "anomaly_id": "repeated-contact:person:arjun-kale:person:sameer-joshi",
+      "type": "REPEATED_COMMUNICATION",
+      "score": 2,
+      "entity_ids": [
+        "person:arjun-kale",
+        "person:sameer-joshi"
+      ],
+      "relationship_ids": [
+        "C-002",
+        "C-008"
+      ],
+      "reason": "2 recorded calls between the same two people."
+    },
+    {
+      "anomaly_id": "repeated-contact:person:neel-shah:person:sameer-joshi",
+      "type": "REPEATED_COMMUNICATION",
+      "score": 2,
+      "entity_ids": [
+        "person:neel-shah",
+        "person:sameer-joshi"
+      ],
+      "relationship_ids": [
+        "C-003",
+        "C-006"
+      ],
+      "reason": "2 recorded calls between the same two people."
+    },
+    {
+      "anomaly_id": "repeated-contact:person:arjun-kale:person:neel-shah",
+      "type": "REPEATED_COMMUNICATION",
+      "score": 2,
+      "entity_ids": [
+        "person:arjun-kale",
+        "person:neel-shah"
+      ],
+      "relationship_ids": [
+        "C-005",
+        "C-010"
+      ],
+      "reason": "2 recorded calls between the same two people."
+    },
+    {
+      "anomaly_id": "large-transfer:TX-001",
+      "type": "HIGH_VALUE_TRANSFER",
+      "score": 185000.0,
+      "entity_ids": [
+        "person:rohan-mehta",
+        "person:neel-shah"
+      ],
+      "relationship_ids": [
+        "TX-001"
+      ],
+      "reason": "Transfer amount is at or above the review threshold of 161000."
+    },
+    {
+      "anomaly_id": "repeated-colocation:location:warehouse-w17",
+      "type": "REPEATED_CO_LOCATION",
+      "score": 2,
+      "entity_ids": [
+        "location:warehouse-w17",
+        "person:arjun-kale",
+        "person:rohan-mehta",
+        "person:sameer-joshi"
+      ],
+      "relationship_ids": [
+        "VR-002:location",
+        "VR-003:location",
+        "VR-005:location",
+        "VR-006:location",
+        "SR-001:person:rohan-mehta",
+        "SR-001:person:arjun-kale",
+        "SR-001:vehicle:MH12AB4821",
+        "SR-001:vehicle:MH14CD7319",
+        "SR-002:person:rohan-mehta",
+        "SR-002:person:arjun-kale",
+        "SR-002:person:sameer-joshi"
+      ],
+      "reason": "Multiple people were independently observed at this location on 2 dates."
+    },
+    {
+      "anomaly_id": "cross-case:H-001:associate",
+      "type": "CROSS_CASE_ASSOCIATION",
+      "score": 1,
+      "entity_ids": [
+        "person:arjun-kale",
+        "person:neel-shah"
+      ],
+      "relationship_ids": [
+        "H-001:associate"
+      ],
+      "reason": "Association is supported by a prior-case record and should be reviewed in current-case context."
+    },
+    {
+      "anomaly_id": "cross-case:H-002:associate",
+      "type": "CROSS_CASE_ASSOCIATION",
+      "score": 1,
+      "entity_ids": [
+        "person:neel-shah",
+        "person:arjun-kale"
+      ],
+      "relationship_ids": [
+        "H-002:associate"
+      ],
+      "reason": "Association is supported by a prior-case record and should be reviewed in current-case context."
+    },
+    {
+      "anomaly_id": "cross-case:H-003:associate",
+      "type": "CROSS_CASE_ASSOCIATION",
+      "score": 1,
+      "entity_ids": [
+        "person:sameer-joshi",
+        "person:arjun-kale"
+      ],
+      "relationship_ids": [
+        "H-003:associate"
+      ],
+      "reason": "Association is supported by a prior-case record and should be reviewed in current-case context."
+    }
+  ]
+}

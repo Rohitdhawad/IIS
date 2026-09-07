@@ -1,0 +1,73 @@
+.rank-card {
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 3px;
+  margin-bottom: 10px;
+  overflow: hidden;
+}
+
+.rank-head {
+  width: 100%;
+  background: none;
+  border: none;
+  padding: 14px 16px;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  color: var(--paper);
+  text-align: left;
+}
+.rank-head:hover { background: var(--panel-2); }
+
+.rank-id {
+  font-size: 15px;
+  font-weight: 600;
+  min-width: 56px;
+  color: var(--paper);
+}
+.rank-id:hover { color: var(--amber); }
+
+.rank-badge {
+  font-size: 10px;
+  padding: 3px 8px;
+  border-radius: 2px;
+  white-space: nowrap;
+  letter-spacing: 0.02em;
+}
+.rank-badge.bridge { border: 1px solid var(--amber-dim); color: var(--amber); }
+.rank-badge.plain { border: 1px solid var(--line); color: var(--paper-dim); }
+
+.rank-bar-wrap {
+  flex: 1;
+  height: 6px;
+  background: var(--panel-2);
+  border-radius: 3px;
+  overflow: hidden;
+}
+.rank-bar { height: 100%; background: var(--teal); }
+
+.rank-score { font-size: 11px; color: var(--paper-dim); min-width: 66px; text-align: right; }
+
+.rank-body { padding: 0 16px 16px 16px; border-top: 1px solid var(--line); }
+
+.rank-metrics { display: flex; gap: 26px; margin: 14px 0 14px 0; }
+.mval { font-size: 17px; font-weight: 600; }
+.mlabel { font-size: 10.5px; color: var(--paper-dim); margin-top: 2px; }
+
+.rank-section-label { font-size: 10.5px; color: var(--paper-dim); margin: 14px 0 6px 0; letter-spacing: 0.02em; }
+.rank-why { font-size: 12.5px; line-height: 1.5; margin: 0; }
+
+.rank-evidence-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+.ev-col-label { font-size: 10px; color: var(--paper-dim); margin-bottom: 4px; }
+.ev-row { font-size: 12px; padding: 3px 0; display: flex; justify-content: space-between; }
+.ev-calls { color: var(--paper-dim); }
+.ev-empty { font-size: 12px; color: var(--paper-dim); font-style: italic; }
+
+.rank-disclaimer {
+  margin-top: 14px; padding-top: 10px; border-top: 1px dashed var(--line);
+  font-size: 10.5px; color: var(--paper-faint); font-style: italic; line-height: 1.5;
+}
+
+@media (max-width: 600px) {
+  .rank-evidence-grid { grid-template-columns: 1fr; }
+}

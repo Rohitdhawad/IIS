@@ -1,21 +1,14 @@
-"""
-IIS Prototype - Part 2: FastAPI + PostgreSQL backend entrypoint.
-
-Run:
-    uvicorn app.main:app --reload --port 8000
-
-Then visit http://localhost:8000/docs for interactive API docs.
-"""
+"""IIS API: complete extracted facts in PostgreSQL, selected graph in Neo4j."""
 import sys
 from pathlib import Path
+
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy import text
 
+from app.api import cases, entities, relationships
 from app.database import engine
-from app.api import cases, entities, relationships, phases
 
-# Part 5: Add graph/ to Python path for Neo4j routes
 graph_path = Path(__file__).parent.parent.parent / "graph"
 if graph_path.exists():
     sys.path.insert(0, str(graph_path))
@@ -28,31 +21,14 @@ else:
     GRAPH_AVAILABLE = False
 
 app = FastAPI(
-    title="IIS — Investigation Intelligence System API",
-    description=(
-        "Structural network analytics over investigation data. "
-        "Part 2 (PostgreSQL): entity/relationship CRUD, phase summaries, metrics. "
-        "Part 5 (Neo4j): graph traversal, pathfinding, GDS algorithms. "
-        "All 'relevance' and 'bridge candidate' scores describe structural position "
-        "in observed communication data ONLY — they are not assessments of guilt or "
-        "criminal involvement."
-    ),
-    version="0.3.0",  # Updated to 0.3.0 for Part 5 integration
+    title="IIS Investigation Intelligence System API",
+    description="Evidence-backed extraction and review patterns. PostgreSQL stores complete facts; Neo4j stores only the post-analysis visualization graph.",
+    version="1.0.0",
 )
-
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=["*"],
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
-
+app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_methods=["*"], allow_headers=["*"])
 app.include_router(cases.router)
 app.include_router(entities.router)
 app.include_router(relationships.router)
-app.include_router(phases.router)
-
-# Part 5: Mount Neo4j graph routes (if available)
 if GRAPH_AVAILABLE:
     app.include_router(graph_routes.router)
 
@@ -60,14 +36,13 @@ if GRAPH_AVAILABLE:
 @app.get("/health", tags=["health"])
 def health():
     try:
-        with engine.connect() as conn:
-            conn.execute(text("SELECT 1"))
+        with engine.connect() as connection:
+            connection.execute(text("SELECT 1"))
         return {"status": "ok", "database": "connected"}
-    except Exception as e:
-        return {"status": "error", "database": "unreachable", "detail": str(e)}
+    except Exception as exc:
+        return {"status": "error", "database": "unreachable", "detail": str(exc)}
 
 
-# Part 5: Cleanup Neo4j driver on shutdown (if available)
 if GRAPH_AVAILABLE:
     @app.on_event("shutdown")
     def shutdown_event():
