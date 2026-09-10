@@ -913,6 +913,7 @@ export default function Dashboard() {
 
     </div>
   )
+<<<<<<< HEAD
 }
 
 /* written by aakash */
@@ -926,3 +927,6 @@ export default function Dashboard() {
     Identify high-influence individuals and bridge entities within investigation networks.
   </p>
 </div>
+=======
+}
+>>>>>>> origin/main
