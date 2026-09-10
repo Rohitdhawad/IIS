@@ -2,7 +2,7 @@ import { NavLink, Outlet } from 'react-router-dom'
 import './Layout.css'
 
 const NAV_ITEMS = [
-  { to: '/', label: 'Investigation Network', end: true },
+  { to: '/dashboard', label: 'Investigation Network', end: true },
   { to: '/upload', label: 'Upload Data' },
 ]
 
