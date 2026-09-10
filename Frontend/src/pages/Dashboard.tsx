@@ -913,4 +913,20 @@ export default function Dashboard() {
 
     </div>
   )
+<<<<<<< HEAD
 }
+
+/* written by aakash */
+<div 
+  className="quick-access-card" 
+  onClick={() => navigate('/app/cases/CASE-2026-0147/influencers')}
+>
+  <div className="card-icon mono">04</div>
+  <h3 className="card-title">Key Influencer Detection</h3>
+  <p className="card-desc text-muted">
+    Identify high-influence individuals and bridge entities within investigation networks.
+  </p>
+</div>
+=======
+}
+>>>>>>> origin/main

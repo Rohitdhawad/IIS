@@ -1,3 +1,5 @@
+import { InfluencerDetection } from './pages/InfluencerDetection';
+import './styles/InfluencerDetection.css';
 import { HashRouter, Routes, Route } from 'react-router-dom'
 
 import Landing from './pages/Landing'
@@ -61,19 +63,19 @@ export default function App() {
         />
 
         <Route
-          path="/cases/create"
-          element={<CreateCase />}
-        />
+        path="/cases/create"
+        element={<CreateCase />}
+      />
 
 
         {/* =========================
             CASE WORKSPACE
         ========================== */}
 
-        <Route
-          path="/cases/:caseId"
-          element={<CaseWorkspaceLayout />}
-        >
+       <Route
+        path="/cases/:caseId"
+        element={<CaseWorkspaceLayout />}
+      />
 
           {/* Dashboard */}
           <Route
@@ -128,14 +130,17 @@ export default function App() {
           />
 
           {/* Individual Entity */}
-          <Route
-            path="entities/:id"
-            element={<EntityDetail />}
-          />
+      <Route
+        path="entities/:id"
+        element={<EntityDetail />}
+      />
 
-        </Route>
-
-      </Routes>
-    </HashRouter>
-  )
+      <Route path="/app/influencers" element={<InfluencerDetection />} />
+      <Route path="/app/cases/:caseId/influencers" element={<InfluencerDetection />} />
+    </Routes>
+  </HashRouter>
+)
 }
+
+
+   
