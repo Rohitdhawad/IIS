@@ -1,0 +1,2 @@
+FIR_ID,CASE_ID,DATE,CRIME_TYPE,LOCATION,COMPLAINANT,DESCRIPTION,PERSONS_MENTIONED
+FIR-001,IIS-2026-001,2026-06-14,Organized Financial Fraud,Pune,Rajesh Traders,"Multiple unauthorized transfers were identified from a business account. Investigators found references to a warehouse and several individuals.","Rohan Mehta;Arjun Kale;Neel Shah"

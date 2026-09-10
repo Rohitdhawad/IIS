@@ -1,0 +1,10 @@
+REPORT_ID: SR-002
+CASE_ID: IIS-2026-001
+DATE: 2026-06-16
+TIME: 10:40
+LOCATION: Warehouse-W17
+
+Observation:
+Rohan Mehta and Arjun Kale were separately observed arriving at Warehouse-W17.
+The same two vehicles recorded in SR-001 were observed again.
+An individual later identified as Sameer Joshi was observed near the entrance.

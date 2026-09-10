@@ -1,0 +1,517 @@
+/* =========================================
+   GRAPH CONTAINER
+========================================= */
+
+.graph-container {
+  position: relative;
+
+  width: 100%;
+  min-height: 0;
+
+  background: var(--panel);
+
+  border: 1px solid var(--line);
+  border-radius: 3px;
+
+  overflow: hidden;
+}
+
+
+/* =========================================
+   SVG
+========================================= */
+
+.graph-container > svg {
+  display: block;
+
+  width: 100%;
+  height: 100%;
+
+  max-width: none;
+  max-height: none;
+}
+
+
+/* =========================================
+   FULLSCREEN
+========================================= */
+
+.graph-container:fullscreen {
+  width: 100vw;
+  height: 100vh;
+
+  min-width: 100vw;
+  min-height: 100vh;
+
+  margin: 0;
+  padding: 0;
+
+  border: 0;
+  border-radius: 0;
+
+  background: var(--bg);
+
+  overflow: hidden;
+}
+
+
+/*
+ * The fullscreen class is also applied by React.
+ */
+
+.graph-container.graph-fullscreen {
+  width: 100vw;
+  height: 100vh;
+
+  min-width: 100vw;
+  min-height: 100vh;
+
+  background: var(--bg);
+
+  border: 0;
+  border-radius: 0;
+
+  overflow: hidden;
+}
+
+
+/*
+ * IMPORTANT:
+ *
+ * Dashboard.css currently contains:
+ *
+ * .dashboard .network-graph-wrapper .graph-container > svg {
+ *   height: 370px;
+ * }
+ *
+ * That selector has higher specificity than the normal
+ * fullscreen selector.
+ *
+ * This selector deliberately matches that specificity
+ * and overrides it.
+ */
+
+.dashboard
+.network-graph-wrapper
+.graph-container.graph-fullscreen
+> svg {
+  display: block;
+
+  width: 100vw !important;
+  height: 100vh !important;
+
+  max-width: none !important;
+  max-height: none !important;
+
+  background: var(--bg);
+}
+
+
+/* =========================================
+   TOOLBAR
+========================================= */
+
+.graph-toolbar {
+  position: absolute;
+
+  z-index: 20;
+
+  top: 12px;
+  right: 12px;
+
+  display: flex;
+  align-items: center;
+
+  gap: 7px;
+}
+
+.fullscreen-control {
+  display: inline-flex;
+
+  align-items: center;
+  justify-content: center;
+
+  height: 30px;
+
+  padding: 0 11px;
+
+  border: 1px solid var(--line);
+  border-radius: 3px;
+
+  background: var(--panel-3);
+
+  color: var(--paper-dim);
+
+  font:
+    9px
+    var(--font-mono);
+
+  cursor: pointer;
+}
+
+.fullscreen-control:hover {
+  border-color: var(--amber-dim);
+
+  background: var(--panel-2);
+
+  color: var(--amber);
+}
+
+
+/* =========================================
+   EDGES
+========================================= */
+
+.graph-edge {
+  pointer-events: none;
+
+  stroke: var(--line);
+
+  stroke-opacity: 0.72;
+}
+
+
+/* =========================================
+   NODES
+========================================= */
+
+.graph-node {
+  stroke: var(--paper-dim);
+
+  stroke-width: 1;
+
+  transition:
+    stroke 0.12s ease,
+    stroke-width 0.12s ease;
+}
+
+.graph-node:hover {
+  stroke: var(--paper);
+
+  stroke-width: 1.7;
+}
+
+.graph-node.dragging {
+  stroke: var(--amber);
+
+  stroke-width: 2;
+}
+
+
+/* =========================================
+   LABELS
+========================================= */
+
+.graph-label {
+  font:
+    10px
+    var(--font-mono);
+
+  fill: var(--paper-dim);
+
+  pointer-events: none;
+
+  dominant-baseline: middle;
+}
+
+
+/* =========================================
+   TOOLTIP
+========================================= */
+
+.graph-tooltip {
+  position: absolute;
+
+  z-index: 30;
+
+  top: 12px;
+  right: 12px;
+
+  min-width: 150px;
+
+  padding: 10px 12px;
+
+  background: var(--panel-3);
+
+  border: 1px solid var(--amber-dim);
+
+  border-radius: 3px;
+
+  font-size: 12px;
+
+  pointer-events: none;
+
+  box-shadow:
+    0 8px 24px
+    rgba(0, 0, 0, 0.28);
+}
+
+.tt-id {
+  margin-bottom: 4px;
+
+  color: var(--paper);
+
+  font-size: 14px;
+
+  font-weight: 600;
+}
+
+.tt-row {
+  color: var(--paper-dim);
+
+  line-height: 1.5;
+}
+
+
+/* =========================================
+   GRAPH LEGEND
+========================================= */
+
+.graph-legend {
+  position: absolute;
+
+  z-index: 10;
+
+  bottom: 10px;
+  left: 14px;
+
+  display: flex;
+
+  align-items: center;
+
+  gap: 18px;
+
+  font:
+    9px
+    var(--font-mono);
+
+  color: var(--paper-faint);
+
+  pointer-events: none;
+}
+
+.legend-item {
+  display: flex;
+
+  align-items: center;
+
+  gap: 6px;
+
+  white-space: nowrap;
+}
+
+.dot {
+  display: inline-block;
+
+  width: 8px;
+  height: 8px;
+
+  flex: 0 0 8px;
+
+  border-radius: 50%;
+}
+
+.dot.regular {
+  background: var(--teal);
+}
+
+.dot.size {
+  background: var(--paper-dim);
+}
+
+.legend-hint {
+  font-style: italic;
+
+  white-space: nowrap;
+}
+
+
+/* =========================================
+   INSPECTOR SUPPORT
+========================================= */
+
+.graph-inspector {
+  position: absolute;
+
+  z-index: 15;
+
+  top: 54px;
+  right: 12px;
+
+  width:
+    min(
+      260px,
+      calc(100% - 24px)
+    );
+
+  max-height:
+    calc(100% - 110px);
+
+  overflow-y: auto;
+
+  background: var(--panel-3);
+
+  border: 1px solid var(--amber-dim);
+
+  padding: 14px;
+
+  box-shadow:
+    0 8px 24px
+    rgba(0, 0, 0, 0.28);
+}
+
+.inspector-close {
+  float: right;
+
+  padding: 4px 6px;
+
+  border: 1px solid var(--line);
+
+  border-radius: 3px;
+
+  background: var(--panel-3);
+
+  color: var(--paper-dim);
+
+  font:
+    11px
+    var(--font-mono);
+
+  cursor: pointer;
+}
+
+.inspector-kicker {
+  color: var(--amber);
+
+  font-size: 10px;
+
+  letter-spacing: 0.06em;
+
+  margin-bottom: 6px;
+}
+
+.graph-inspector h4 {
+  margin: 0 0 4px;
+
+  font-size: 16px;
+
+  color: var(--paper);
+}
+
+.inspector-meta {
+  color: var(--paper-dim);
+
+  font-size: 11px;
+
+  line-height: 1.5;
+
+  margin-bottom: 12px;
+
+  overflow-wrap: anywhere;
+}
+
+.inspector-detail {
+  border-top: 1px solid var(--line);
+
+  padding-top: 10px;
+  margin-top: 10px;
+
+  color: var(--paper-dim);
+
+  font-size: 11px;
+
+  line-height: 1.6;
+
+  overflow-wrap: anywhere;
+}
+
+.inspector-list {
+  display: grid;
+
+  gap: 5px;
+}
+
+.inspector-list button {
+  display: flex;
+
+  justify-content: space-between;
+
+  gap: 8px;
+
+  text-align: left;
+
+  border: 1px solid var(--line);
+
+  background: var(--panel);
+
+  color: var(--paper);
+
+  padding: 7px;
+
+  font:
+    11px
+    var(--font-mono);
+
+  cursor: pointer;
+}
+
+.inspector-list button:hover {
+  border-color: var(--amber-dim);
+}
+
+.inspector-list span {
+  color: var(--paper-dim);
+
+  overflow: hidden;
+
+  text-overflow: ellipsis;
+
+  white-space: nowrap;
+}
+
+.inspector-action {
+  margin-top: 12px;
+
+  color: var(--amber);
+
+  border: 1px solid var(--amber-dim);
+
+  background: var(--panel-3);
+
+  border-radius: 3px;
+
+  padding: 7px 9px;
+
+  font:
+    11px
+    var(--font-mono);
+
+  cursor: pointer;
+}
+
+
+/* =========================================
+   RESPONSIVE
+========================================= */
+
+@media (max-width: 700px) {
+
+  .graph-toolbar {
+    top: 9px;
+    right: 9px;
+  }
+
+  .graph-legend {
+    left: 10px;
+    right: 10px;
+
+    flex-wrap: wrap;
+
+    gap: 5px 12px;
+  }
+
+  .legend-hint {
+    width: 100%;
+  }
+
+}

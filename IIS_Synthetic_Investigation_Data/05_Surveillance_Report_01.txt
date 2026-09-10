@@ -1,0 +1,12 @@
+REPORT_ID: SR-001
+CASE_ID: IIS-2026-001
+DATE: 2026-06-14
+TIME: 11:35
+LOCATION: Warehouse-W17
+
+Observation:
+A grey sedan bearing registration MH12AB4821 was observed outside Warehouse-W17.
+An individual identified in the investigation as Rohan Mehta was observed entering the premises.
+Approximately 20 minutes later, an SUV bearing registration MH14CD7319 arrived at the location.
+The vehicle is registered to Arjun Kale.
+Both vehicles remained at the location for approximately 35 minutes.

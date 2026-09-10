@@ -1,0 +1,11 @@
+CALL_ID,CASE_ID,TIMESTAMP,CALLER,RECEIVER,DURATION_SECONDS,TOWER_LOCATION
+C-001,IIS-2026-001,2026-06-14 09:12,Rohan Mehta,Arjun Kale,184,Pune-Kothrud
+C-002,IIS-2026-001,2026-06-14 09:47,Arjun Kale,Sameer Joshi,96,Pune-Kothrud
+C-003,IIS-2026-001,2026-06-14 10:15,Sameer Joshi,Neel Shah,212,Pune-Shivajinagar
+C-004,IIS-2026-001,2026-06-14 11:04,Rohan Mehta,Arjun Kale,321,Pune-Kothrud
+C-005,IIS-2026-001,2026-06-14 13:26,Arjun Kale,Neel Shah,143,Pune-Hadapsar
+C-006,IIS-2026-001,2026-06-15 08:42,Neel Shah,Sameer Joshi,87,Pune-Shivajinagar
+C-007,IIS-2026-001,2026-06-15 12:18,Rohan Mehta,Sameer Joshi,65,Pune-Kothrud
+C-008,IIS-2026-001,2026-06-15 18:31,Sameer Joshi,Arjun Kale,175,Pune-Hadapsar
+C-009,IIS-2026-001,2026-06-16 09:02,Arjun Kale,Rohan Mehta,231,Pune-Kothrud
+C-010,IIS-2026-001,2026-06-16 21:14,Neel Shah,Arjun Kale,119,Pune-Hadapsar

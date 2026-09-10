@@ -1,0 +1,5 @@
+HISTORY_ID,PERSON,PREVIOUS_CASE,CRIME_TYPE,YEAR,LOCATION,KNOWN_ASSOCIATES
+H-001,Arjun Kale,IIS-2024-017,Financial Fraud,2024,Mumbai,Neel Shah
+H-002,Neel Shah,IIS-2024-017,Financial Fraud,2024,Mumbai,Arjun Kale
+H-003,Sameer Joshi,IIS-2025-009,Illegal Goods Movement,2025,Pune,Arjun Kale
+H-004,Rohan Mehta,NONE,NONE,NONE,NONE,NONE
