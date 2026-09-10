@@ -1,0 +1,242 @@
+.case-entities { max-width: 1060px; }
+
+.ce-header { margin-bottom: 20px; }
+.ce-header h2 { font-size: 24px; font-weight: 600; margin: 6px 0 10px 0; }
+
+.ce-status { font-size: 13px; color: var(--paper-dim); padding: 16px 0; font-family: var(--font-mono); }
+
+/* ── Two-column layout ───────────────────────────────────────────────────── */
+
+.ce-layout {
+  display: grid;
+  grid-template-columns: 280px 1fr;
+  gap: 20px;
+  margin-bottom: 28px;
+  align-items: start;
+}
+
+/* ── Entity list column ──────────────────────────────────────────────────── */
+
+.ce-list-col {
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 3px;
+  overflow: hidden;
+  position: sticky;
+  top: 16px;
+}
+
+.ce-list-controls {
+  padding: 10px;
+  border-bottom: 1px solid var(--line);
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+}
+
+.ce-search-input,
+.ce-type-select {
+  background: var(--panel-2);
+  border: 1px solid var(--line);
+  color: var(--paper);
+  padding: 8px 10px;
+  border-radius: 3px;
+  font: inherit;
+  font-size: 12.5px;
+  outline: none;
+  width: 100%;
+  transition: border-color 0.15s;
+}
+
+.ce-search-input::placeholder { color: var(--paper-faint); }
+.ce-search-input:focus,
+.ce-type-select:focus { border-color: var(--amber-dim); }
+
+.ce-list-count {
+  font-size: 11px;
+  color: var(--paper-faint);
+  padding: 6px 10px 4px 10px;
+}
+
+.ce-entity-list {
+  max-height: 560px;
+  overflow-y: auto;
+}
+
+.ce-entity-row {
+  display: block;
+  width: 100%;
+  text-align: left;
+  padding: 10px 12px;
+  border: none;
+  border-bottom: 1px solid var(--line-soft);
+  background: transparent;
+  cursor: pointer;
+  font-family: inherit;
+  transition: background 0.12s;
+}
+
+.ce-entity-row:hover { background: var(--panel-2); }
+.ce-entity-row.selected { background: var(--panel-3); border-left: 2px solid var(--teal); }
+
+.ce-entity-label { font-size: 13.5px; color: var(--paper); margin-bottom: 3px; font-weight: 500; }
+
+.ce-entity-meta {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+}
+
+.ce-entity-type { font-size: 11px; color: var(--teal); }
+.ce-entity-degree { font-size: 11px; color: var(--paper-faint); }
+
+/* ── Detail column ───────────────────────────────────────────────────────── */
+
+.ce-detail-col { min-width: 0; }
+
+.ce-select-prompt {
+  background: var(--panel);
+  border: 1px dashed var(--line);
+  border-radius: 3px;
+  padding: 48px 24px;
+  text-align: center;
+}
+
+.ce-select-prompt-text { font-size: 13px; color: var(--paper-faint); }
+
+/* ── Entity panel ────────────────────────────────────────────────────────── */
+
+.ce-panel {
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 3px;
+  padding: 18px;
+}
+
+.ce-panel-header { margin-bottom: 14px; }
+.ce-panel-eyebrow { font-size: 10px; color: var(--paper-faint); text-transform: uppercase; letter-spacing: 0.07em; margin-bottom: 5px; }
+.ce-panel-title { font-size: 20px; font-weight: 600; color: var(--paper); margin: 0 0 8px 0; }
+
+.ce-panel-badges { display: flex; gap: 8px; flex-wrap: wrap; }
+
+.ce-type-badge {
+  font-size: 10px; padding: 2px 8px; border-radius: 2px;
+  border: 1px solid var(--teal-dim); color: var(--teal);
+}
+
+.ce-deg-badge {
+  font-size: 10px; padding: 2px 8px; border-radius: 2px;
+  border: 1px solid var(--line); color: var(--paper-faint);
+}
+
+.ce-panel-id-block {
+  background: var(--panel-2);
+  border: 1px solid var(--line);
+  border-radius: 2px;
+  padding: 8px 12px;
+  font-size: 12.5px;
+  color: var(--amber);
+  margin-bottom: 16px;
+  word-break: break-all;
+}
+
+.ce-panel-section { margin-bottom: 16px; }
+
+.ce-panel-section-label {
+  font-size: 10px;
+  color: var(--paper-faint);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  margin-bottom: 8px;
+}
+
+/* Attributes */
+.ce-attr-grid { display: flex; flex-direction: column; gap: 6px; }
+
+.ce-attr-row {
+  display: flex;
+  gap: 12px;
+  align-items: baseline;
+  padding: 6px 10px;
+  background: var(--panel-2);
+  border-radius: 2px;
+}
+
+.ce-attr-key { font-size: 11px; color: var(--paper-dim); width: 120px; flex-shrink: 0; text-transform: uppercase; }
+.ce-attr-val { font-size: 13px; color: var(--paper); }
+
+/* Relationships */
+.ce-rel-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+
+.ce-rel-col-label {
+  font-size: 10px; color: var(--paper-faint);
+  text-transform: uppercase; letter-spacing: 0.06em;
+  margin-bottom: 8px;
+}
+
+.ce-rel-empty { font-size: 12px; color: var(--paper-faint); font-style: italic; }
+
+.ce-rel-row {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+  padding: 5px 0;
+  border-bottom: 1px solid var(--line-soft);
+  flex-wrap: wrap;
+}
+
+.ce-rel-arrow { font-size: 12px; color: var(--paper-faint); flex-shrink: 0; }
+
+.ce-rel-link {
+  font-size: 12px;
+  color: var(--teal);
+  word-break: break-all;
+  flex: 1;
+  min-width: 0;
+}
+
+.ce-rel-link:hover { text-decoration: underline; }
+
+.ce-rel-type {
+  font-size: 10px;
+  color: var(--paper-faint);
+  flex-shrink: 0;
+}
+
+.ce-panel-disclaimer {
+  font-size: 11px;
+  color: var(--paper-faint);
+  border-top: 1px solid var(--line);
+  padding-top: 10px;
+  margin-top: 12px;
+  font-style: italic;
+  line-height: 1.5;
+}
+
+/* ── Back / shared ───────────────────────────────────────────────────────── */
+
+.ce-back-row { margin-bottom: 24px; }
+
+.btn {
+  font-family: inherit; font-size: 13px; padding: 9px 16px;
+  border-radius: 3px; border: 1px solid transparent; cursor: pointer;
+  transition: background 0.15s, border-color 0.15s, color 0.15s;
+}
+.btn.ghost { background: transparent; border-color: var(--line); color: var(--paper-dim); }
+.btn.ghost:hover { border-color: var(--amber-dim); color: var(--paper); }
+
+.eyebrow { font-size: 12px; color: var(--paper-dim); font-family: var(--font-mono); margin-bottom: 4px; }
+.intro-text { font-size: 13px; color: var(--paper-dim); max-width: 640px; line-height: 1.6; margin: 0; }
+
+.disclaimer-block {
+  font-size: 11.5px; color: var(--paper-faint);
+  border-top: 1px solid var(--line); padding-top: 16px;
+  line-height: 1.6; font-style: italic; max-width: 640px;
+}
+
+@media (max-width: 860px) {
+  .ce-layout { grid-template-columns: 1fr; }
+  .ce-list-col { position: static; }
+  .ce-entity-list { max-height: 300px; }
+  .ce-rel-grid { grid-template-columns: 1fr; }
+}

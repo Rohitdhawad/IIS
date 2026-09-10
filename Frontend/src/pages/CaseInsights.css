@@ -1,0 +1,202 @@
+.case-insights { max-width: 900px; }
+
+.ci-header { margin-bottom: 20px; }
+.ci-header h2 { font-size: 24px; font-weight: 600; margin: 6px 0 10px 0; }
+
+.ci-status { font-size: 13px; color: var(--paper-dim); padding: 16px 0; font-family: var(--font-mono); }
+
+/* ── Disclaimer banner ───────────────────────────────────────────────────── */
+
+.ci-disclaimer-banner {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  background: rgba(201, 154, 77, 0.08);
+  border: 1px solid var(--amber-dim);
+  border-radius: 3px;
+  padding: 12px 14px;
+  margin-bottom: 24px;
+  font-size: 12.5px;
+  color: var(--paper-dim);
+  line-height: 1.6;
+}
+
+.ci-banner-icon {
+  color: var(--amber);
+  font-size: 14px;
+  flex-shrink: 0;
+  margin-top: 1px;
+}
+
+/* ── Controls ────────────────────────────────────────────────────────────── */
+
+.ci-controls {
+  display: flex;
+  align-items: flex-end;
+  gap: 16px;
+  flex-wrap: wrap;
+  margin-bottom: 20px;
+}
+
+.ci-filter-field {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.ci-filter-label {
+  font-size: 11px;
+  color: var(--paper-dim);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.ci-filter-field select {
+  background: var(--panel);
+  border: 1px solid var(--line);
+  color: var(--paper);
+  padding: 8px 11px;
+  border-radius: 3px;
+  font: inherit;
+  font-size: 13px;
+  outline: none;
+  min-width: 200px;
+  transition: border-color 0.15s;
+}
+
+.ci-filter-field select:focus { border-color: var(--amber-dim); }
+
+.ci-count { font-size: 12px; color: var(--paper-faint); padding-bottom: 4px; }
+
+/* ── Insight cards ───────────────────────────────────────────────────────── */
+
+.ci-list { display: flex; flex-direction: column; gap: 14px; margin-bottom: 28px; }
+
+.ci-card {
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-left: 3px solid var(--line);
+  border-radius: 3px;
+  padding: 16px 18px;
+  transition: border-color 0.15s;
+}
+
+.ci-card:hover { border-color: var(--amber-dim); }
+
+.ci-card-head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin-bottom: 10px;
+}
+
+.ci-type-badge {
+  font-size: 10px;
+  padding: 2px 8px;
+  border-radius: 2px;
+  border: 1px solid;
+  letter-spacing: 0.04em;
+}
+
+.ci-verify-tag {
+  font-size: 10px;
+  color: var(--paper-faint);
+  border: 1px solid var(--line);
+  padding: 2px 7px;
+  border-radius: 2px;
+  margin-left: auto;
+}
+
+.ci-title {
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--paper);
+  margin-bottom: 8px;
+}
+
+.ci-desc {
+  font-size: 13.5px;
+  color: var(--paper-dim);
+  line-height: 1.7;
+  margin-bottom: 14px;
+}
+
+/* ── Meta row ────────────────────────────────────────────────────────────── */
+
+.ci-meta-row {
+  display: flex;
+  gap: 28px;
+  flex-wrap: wrap;
+  margin-bottom: 12px;
+}
+
+.ci-meta-label {
+  font-size: 10px;
+  color: var(--paper-faint);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  display: block;
+  margin-bottom: 6px;
+}
+
+/* Confidence bar */
+.ci-conf-wrap { display: flex; align-items: center; gap: 8px; }
+
+.ci-conf-bar {
+  width: 120px;
+  height: 5px;
+  background: var(--line);
+  border-radius: 3px;
+  overflow: hidden;
+}
+
+.ci-conf-fill {
+  height: 100%;
+  border-radius: 3px;
+  transition: width 0.4s ease;
+}
+
+.ci-conf-label { font-size: 12px; color: var(--paper-dim); }
+
+/* Entity tags */
+.ci-entity-tags { display: flex; flex-wrap: wrap; gap: 6px; }
+
+.ci-entity-tag {
+  font-size: 10.5px;
+  color: var(--teal);
+  background: var(--panel-2);
+  border: 1px solid var(--line);
+  border-radius: 2px;
+  padding: 2px 7px;
+}
+
+/* Insight note */
+.ci-insight-note {
+  font-size: 11px;
+  color: var(--paper-faint);
+  border-top: 1px solid var(--line-soft);
+  padding-top: 10px;
+  letter-spacing: 0.01em;
+}
+
+/* ── Back / shared ───────────────────────────────────────────────────────── */
+
+.ci-back-row { margin-top: 8px; margin-bottom: 24px; }
+
+.btn {
+  font-family: inherit; font-size: 13px; padding: 9px 16px;
+  border-radius: 3px; border: 1px solid transparent; cursor: pointer;
+  transition: background 0.15s, border-color 0.15s, color 0.15s;
+}
+.btn.ghost { background: transparent; border-color: var(--line); color: var(--paper-dim); }
+.btn.ghost:hover { border-color: var(--amber-dim); color: var(--paper); }
+
+.eyebrow { font-size: 12px; color: var(--paper-dim); font-family: var(--font-mono); margin-bottom: 4px; }
+.intro-text { font-size: 13px; color: var(--paper-dim); max-width: 640px; line-height: 1.6; margin: 0; }
+
+.disclaimer-block {
+  font-size: 11.5px; color: var(--paper-faint);
+  border-top: 1px solid var(--line); padding-top: 16px;
+  line-height: 1.6; font-style: italic; max-width: 640px;
+}

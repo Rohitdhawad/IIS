@@ -1,0 +1,184 @@
+.search-page {
+  padding: 32px 40px 64px 40px;
+  max-width: 960px;
+}
+
+/* ── Filter panel ────────────────────────────────────────────────────────── */
+
+.search-panel {
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 3px;
+  padding: 20px;
+  margin-bottom: 24px;
+}
+
+.search-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 14px;
+  align-items: flex-end;
+}
+
+.search-field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 160px;
+}
+
+.search-field.wide {
+  flex: 1;
+  min-width: 240px;
+}
+
+.sf-label {
+  font-size: 11px;
+  color: var(--paper-dim);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.search-field input,
+.search-field select {
+  background: var(--panel-2);
+  border: 1px solid var(--line);
+  color: var(--paper);
+  padding: 9px 11px;
+  border-radius: 3px;
+  font: inherit;
+  font-size: 13px;
+  outline: none;
+  transition: border-color 0.15s;
+}
+
+.search-field input:focus,
+.search-field select:focus {
+  border-color: var(--amber-dim);
+}
+
+.clear-btn {
+  background: transparent;
+  border: 1px solid var(--line);
+  color: var(--paper-faint);
+  font: 11px var(--font-mono);
+  padding: 7px 12px;
+  border-radius: 3px;
+  cursor: pointer;
+  margin-top: 12px;
+  transition: border-color 0.15s, color 0.15s;
+}
+
+.clear-btn:hover {
+  border-color: var(--amber-dim);
+  color: var(--amber);
+}
+
+/* ── Results ─────────────────────────────────────────────────────────────── */
+
+.search-results-label {
+  font-size: 12px;
+  color: var(--paper-dim);
+  margin-bottom: 14px;
+}
+
+.search-status {
+  font-size: 13px;
+  color: var(--paper-dim);
+  padding: 16px 0;
+}
+
+.search-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-bottom: 24px;
+}
+
+.search-card {
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 3px;
+  padding: 16px 18px;
+  transition: border-color 0.15s;
+}
+
+.search-card:hover {
+  border-color: var(--amber-dim);
+}
+
+.search-card-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 6px;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.sc-id { font-size: 12px; color: var(--amber); }
+
+.sc-badges {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.status-badge {
+  font-size: 10px;
+  padding: 2px 7px;
+  border-radius: 2px;
+  border: 1px solid var(--line);
+  color: var(--paper-dim);
+}
+
+.status-badge.status-active { border-color: var(--teal-dim); color: var(--teal); }
+.status-badge.status-under-review { border-color: var(--amber-dim); color: var(--amber); }
+.status-badge.status-pending { border-color: var(--line); color: var(--paper-faint); }
+
+.type-badge {
+  font-size: 10px;
+  padding: 2px 7px;
+  border-radius: 2px;
+  border: 1px solid var(--line);
+  color: var(--paper-faint);
+}
+
+.sc-name { font-size: 16px; font-weight: 600; color: var(--paper); margin-bottom: 6px; }
+.sc-desc { font-size: 13px; color: var(--paper-dim); line-height: 1.55; margin-bottom: 10px; }
+.sc-meta { font-size: 12px; color: var(--teal); margin-bottom: 12px; }
+
+.sc-footer {
+  border-top: 1px solid var(--line-soft);
+  padding-top: 10px;
+}
+
+.btn {
+  font-family: inherit;
+  font-size: 13px;
+  padding: 9px 16px;
+  border-radius: 3px;
+  border: 1px solid transparent;
+  cursor: pointer;
+  transition: background 0.15s, border-color 0.15s, color 0.15s;
+}
+
+.btn.primary { background: var(--amber); color: #0e1210; font-weight: 600; }
+.btn.primary:hover { background: #d4a85a; }
+
+.page-header { margin-bottom: 28px; }
+.eyebrow { font-size: 12px; color: var(--paper-dim); font-family: var(--font-mono); margin-bottom: 4px; }
+.page-header h2 { font-size: 26px; margin: 6px 0 10px 0; font-weight: 600; }
+.intro-text { font-size: 13px; color: var(--paper-dim); max-width: 640px; line-height: 1.6; margin: 0; }
+
+.disclaimer-block {
+  font-size: 11.5px; color: var(--paper-faint);
+  border-top: 1px solid var(--line); padding-top: 16px;
+  line-height: 1.6; font-style: italic; max-width: 640px;
+}
+
+@media (max-width: 640px) {
+  .search-page { padding: 20px 16px 48px 16px; }
+  .search-row { flex-direction: column; }
+  .search-field, .search-field.wide { min-width: 0; width: 100%; }
+}

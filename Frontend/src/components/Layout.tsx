@@ -3,6 +3,7 @@ import './Layout.css'
 
 const NAV_ITEMS = [
   { to: '/', label: 'Investigation Network', end: true },
+  { to: '/history', label: 'Recent History' },
   { to: '/upload', label: 'Upload Data' },
 ]
 

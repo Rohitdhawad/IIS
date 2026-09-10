@@ -1,91 +1,132 @@
-import { useEffect, useState, type ChangeEvent } from 'react'
-import { Link } from 'react-router-dom'
-import { getCase, getVisualGraph, type CaseInfo, type InvestigationGraph, type GraphNode, type GraphRelationship } from '../lib/dataClient'
-import NetworkGraph from '../components/NetworkGraph'
+import { useEffect, useState } from 'react'
+import { useNavigate } from 'react-router-dom'
+import { getCases, type CaseSummary } from '../lib/dataClient'
 import './Dashboard.css'
 
+function formatDate(value: string | null): string {
+  if (!value) return '—'
+  const d = new Date(value)
+  if (Number.isNaN(d.getTime())) return '—'
+  return d.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })
+}
+
 export default function Dashboard() {
-  const [caseInfo, setCaseInfo] = useState<CaseInfo | null>(null)
-  const [graph, setGraph] = useState<InvestigationGraph | null>(null)
-  const [entityType, setEntityType] = useState('All')
-  const [relationshipType, setRelationshipType] = useState('All')
+  const navigate = useNavigate()
+  const [cases, setCases] = useState<CaseSummary[]>([])
+  const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    getCase().then(setCaseInfo)
-    getVisualGraph().then(setGraph)
+    getCases().then(({ cases }) => {
+      setCases(cases)
+      setLoading(false)
+    })
   }, [])
 
-  const entityTypes = graph ? [...new Set(graph.nodes.map((node) => node.type))].sort() : []
-  const relationshipTypes = graph ? [...new Set(graph.relationships.map((relationship) => relationship.type))].sort() : []
-  const filteredNodes: GraphNode[] = graph?.nodes.filter((node) => entityType === 'All' || node.type === entityType) || []
-  const visibleIds = new Set(filteredNodes.map((node) => node.id))
-  const filteredLinks: GraphRelationship[] = graph?.links.filter((link) => {
-    const matchesType = relationshipType === 'All' || link.type === relationshipType
-    return matchesType && visibleIds.has(link.source) && visibleIds.has(link.target)
-  }) || []
-  const topEntities = [...filteredNodes].sort((a, b) => b.degree - a.degree).slice(0, 6)
-
-  const handleEntityTypeChange = (event: ChangeEvent<HTMLSelectElement>) => setEntityType(event.target.value)
-  const handleRelationshipTypeChange = (event: ChangeEvent<HTMLSelectElement>) => setRelationshipType(event.target.value)
+  const activeCases = cases.filter((c) => c.status === 'Active').length
+  const totalEntities = cases.reduce((sum, c) => sum + c.num_entities, 0)
+  const totalRelationships = cases.reduce((sum, c) => sum + c.num_relationships, 0)
+  const recentCases = cases.slice(0, 3)
 
   return (
-    <div className="dashboard">
+    <div className="dashboard-page">
       <div className="page-header">
         <div className="eyebrow mono">Investigation Intelligence System</div>
-        <h2>{caseInfo?.name || 'Ingested Investigation Network'}</h2>
-        <p className="intro-text">Explore the entities and evidence-backed relationships selected from the data ingested into IIS.</p>
-        {caseInfo && (
-          <div className="case-stats">
-            <span><b>{caseInfo.num_entities}</b> entities</span>
-            <span><b>{caseInfo.num_relationships}</b> relationships</span>
-            <span><b>{graph?.nodes.filter((node) => node.type === 'Case').length || 0}</b> case records</span>
+        <h2>Investigator Dashboard</h2>
+        <p className="intro-text">
+          Command centre for active investigations. Select a case to enter its workspace.
+        </p>
+      </div>
+
+      {/* Stats row */}
+      {!loading && (
+        <div className="dashboard-stats">
+          <div className="stat-card">
+            <div className="stat-value mono">{cases.length}</div>
+            <div className="stat-label">Total Cases</div>
+          </div>
+          <div className="stat-card">
+            <div className="stat-value mono">{activeCases}</div>
+            <div className="stat-label">Active</div>
+          </div>
+          <div className="stat-card">
+            <div className="stat-value mono">{totalEntities}</div>
+            <div className="stat-label">Total Entities</div>
+          </div>
+          <div className="stat-card">
+            <div className="stat-value mono">{totalRelationships}</div>
+            <div className="stat-label">Total Relationships</div>
+          </div>
+        </div>
+      )}
+
+      {/* Quick access — recent cases */}
+      <div className="dashboard-section">
+        <div className="dashboard-section-head">
+          <h3>Recent Cases</h3>
+          <button className="text-btn" onClick={() => navigate('/app/cases')}>
+            View all →
+          </button>
+        </div>
+
+        {loading && <div className="dashboard-loading mono">Loading cases...</div>}
+
+        {!loading && (
+          <div className="dashboard-case-list">
+            {recentCases.map((c) => (
+              <div key={c.id} className="dashboard-case-card">
+                <div className="dashboard-case-top">
+                  <span className="case-id mono">{c.id}</span>
+                  {c.status && (
+                    <span className={`status-badge mono status-${(c.status || '').toLowerCase().replace(/\s+/g, '-')}`}>
+                      {c.status}
+                    </span>
+                  )}
+                </div>
+                <div className="dashboard-case-name">{c.name}</div>
+                {c.description && (
+                  <div className="dashboard-case-desc">{c.description}</div>
+                )}
+                <div className="dashboard-case-meta mono">
+                  {c.num_entities} entities · {c.num_relationships} relationships
+                  {c.location && ` · ${c.location}`}
+                </div>
+                <div className="dashboard-case-footer">
+                  <span className="dashboard-case-date mono">
+                    {formatDate(c.created_at)}
+                  </span>
+                  <button
+                    className="btn primary"
+                    onClick={() => navigate(`/app/cases/${c.id}`)}
+                  >
+                    Open Case
+                  </button>
+                </div>
+              </div>
+            ))}
           </div>
         )}
       </div>
 
-      <div className="graph-section">
-        <div className="graph-section-head">
-          <h3>Evidence Network</h3>
-          <div className="network-filters">
-            <label>Entity type
-              <select value={entityType} onChange={handleEntityTypeChange}>
-                <option>All</option>
-                {entityTypes.map((type) => <option key={type}>{type}</option>)}
-              </select>
-            </label>
-            <label>Relationship
-              <select value={relationshipType} onChange={handleRelationshipTypeChange}>
-                <option>All</option>
-                {relationshipTypes.map((type) => <option key={type}>{type}</option>)}
-              </select>
-            </label>
-          </div>
+      {/* Quick actions */}
+      <div className="dashboard-section">
+        <div className="dashboard-section-head">
+          <h3>Quick Access</h3>
         </div>
-        <NetworkGraph nodes={filteredNodes} links={filteredLinks} height={480} />
-        <div className="graph-stats-row mono">{filteredNodes.length} entities · {filteredLinks.length} relationships shown</div>
-      </div>
-
-      <div className="preview-section">
-        <div className="preview-head">
-          <h3>Most Connected Entities</h3>
-          <span className="preview-link">Select an entity to inspect its evidence</span>
-        </div>
-        <div className="preview-grid">
-          {topEntities.map((e) => (
-            <Link to={`/entities/${e.entity_id}`} key={e.entity_id} className="preview-card">
-              <div className="preview-id">{e.label}</div>
-              <div className="preview-badge mono">{e.type}</div>
-              <div className="preview-metric mono">{e.degree} connected records</div>
-              <div className="preview-sub">{e.entity_id}</div>
-            </Link>
-          ))}
+        <div className="dashboard-quick-actions">
+          <button className="quick-action-card" onClick={() => navigate('/app/cases')}>
+            <div className="quick-action-title">Recent Cases</div>
+            <div className="quick-action-desc">Browse all available investigation cases</div>
+          </button>
+          <button className="quick-action-card" onClick={() => navigate('/app/search')}>
+            <div className="quick-action-title">Search Cases</div>
+            <div className="quick-action-desc">Filter cases by ID, name, entity or location</div>
+          </button>
         </div>
       </div>
 
       <div className="disclaimer-block">
-        The graph shows extracted and selected relationships from ingested
-        evidence. It is a review aid and does not establish intent, guilt, or
-        criminal involvement.
+        All information shown is for investigator review only. Relationships and analytical
+        outputs do not independently establish guilt, intent or criminal involvement.
       </div>
     </div>
   )
