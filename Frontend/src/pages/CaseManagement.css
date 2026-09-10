@@ -1,0 +1,416 @@
+.case-management {
+  min-height: 100vh;
+  padding: 42px 48px;
+  background: var(--bg);
+  color: var(--paper);
+}
+
+/* HEADER */
+
+.cm-header {
+  max-width: 1250px;
+  margin: 0 auto 38px;
+
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-end;
+  gap: 40px;
+
+  padding-bottom: 30px;
+  border-bottom: 1px solid var(--line);
+}
+
+.cm-header .eyebrow {
+  color: var(--teal);
+  font-size: 10px;
+  letter-spacing: 0.1em;
+  margin-bottom: 10px;
+}
+
+.cm-header h1 {
+  margin: 0;
+  font-size: 34px;
+  font-weight: 500;
+  letter-spacing: -0.03em;
+}
+
+.cm-header p {
+  max-width: 650px;
+  margin: 12px 0 0;
+
+  color: var(--paper-dim);
+  font-size: 13px;
+  line-height: 1.6;
+}
+
+/* PRIMARY BUTTON */
+
+.cm-primary-button {
+  flex-shrink: 0;
+
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 28px;
+
+  min-width: 190px;
+  padding: 13px 15px;
+
+  border: 1px solid var(--amber);
+  background: var(--amber);
+  color: var(--bg);
+
+  font-family: var(--font-mono);
+  font-size: 9px;
+  letter-spacing: 0.04em;
+
+  transition: 160ms ease;
+}
+
+.cm-primary-button:hover {
+  background: var(--paper);
+  border-color: var(--paper);
+}
+
+.cm-primary-button span:last-child {
+  font-size: 16px;
+}
+
+/* OVERVIEW */
+
+.cm-overview {
+  max-width: 1250px;
+  margin: 0 auto 48px;
+
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+
+  border-top: 1px solid var(--line);
+  border-bottom: 1px solid var(--line);
+}
+
+.cm-overview-item {
+  min-height: 82px;
+  padding: 17px 20px;
+
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+
+  border-right: 1px solid var(--line);
+}
+
+.cm-overview-item:last-child {
+  border-right: 0;
+}
+
+.cm-overview-item span {
+  color: var(--paper-faint);
+  font-size: 8px;
+  letter-spacing: 0.1em;
+}
+
+.cm-overview-item strong {
+  color: var(--paper);
+  font-size: 20px;
+  font-weight: 500;
+}
+
+.cm-overview-item .status-ready {
+  color: var(--teal);
+  font-family: var(--font-mono);
+  font-size: 10px;
+}
+
+/* SECTION */
+
+.cm-section {
+  max-width: 1250px;
+  margin: 0 auto;
+}
+
+.cm-section-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-end;
+
+  margin-bottom: 18px;
+}
+
+.cm-section-header h2,
+.cm-history-panel h2 {
+  margin: 3px 0 0;
+
+  font-size: 20px;
+  font-weight: 500;
+}
+
+.section-label {
+  margin: 0;
+  color: var(--paper-faint);
+  font-size: 8px;
+  letter-spacing: 0.1em;
+}
+
+.cm-history-link {
+  color: var(--amber);
+  font-size: 9px;
+  letter-spacing: 0.04em;
+}
+
+.cm-history-link:hover {
+  text-decoration: underline;
+}
+
+/* CASE CARDS */
+
+.case-list {
+  border-top: 1px solid var(--line);
+}
+
+.case-card {
+  display: grid;
+  grid-template-columns: minmax(280px, 1.4fr) minmax(280px, 1fr) 120px;
+
+  align-items: center;
+
+  min-height: 142px;
+
+  border-bottom: 1px solid var(--line);
+
+  transition: background 160ms ease;
+}
+
+.case-card:hover {
+  background: var(--panel);
+}
+
+.case-card-main {
+  padding: 22px 24px 22px 0;
+}
+
+.case-card-top {
+  display: flex;
+  align-items: center;
+  gap: 18px;
+  margin-bottom: 9px;
+}
+
+.case-id {
+  color: var(--paper-faint);
+  font-size: 9px;
+}
+
+.case-status {
+  font-size: 8px;
+  letter-spacing: 0.05em;
+}
+
+.case-status.active {
+  color: var(--teal);
+}
+
+.case-status.review {
+  color: var(--amber);
+}
+
+.case-card h3 {
+  margin: 0 0 12px;
+
+  color: var(--paper);
+
+  font-size: 18px;
+  font-weight: 500;
+}
+
+.case-categories {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.category-tag {
+  padding: 5px 7px;
+
+  border: 1px solid var(--line);
+
+  color: var(--paper-dim);
+
+  font-size: 8px;
+}
+
+/* CASE INFO */
+
+.case-card-info {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 20px;
+
+  padding: 22px;
+
+  border-left: 1px solid var(--line);
+}
+
+.case-card-info div {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+}
+
+.case-card-info span {
+  color: var(--paper-faint);
+  font-size: 7px;
+  letter-spacing: 0.08em;
+}
+
+.case-card-info strong {
+  color: var(--paper);
+  font-family: var(--font-mono);
+  font-size: 10px;
+  font-weight: 400;
+}
+
+/* OPEN BUTTON */
+
+.case-open-button {
+  height: 100%;
+
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+
+  border-left: 1px solid var(--line);
+
+  color: var(--amber);
+
+  font-family: var(--font-mono);
+  font-size: 8px;
+  letter-spacing: 0.05em;
+
+  transition: 160ms ease;
+}
+
+.case-open-button:hover {
+  background: var(--panel-2);
+}
+
+.case-open-button span {
+  font-size: 15px;
+}
+
+/* HISTORY */
+
+.cm-history-panel {
+  max-width: 1250px;
+  margin: 45px auto 0;
+  padding: 25px;
+
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 40px;
+
+  background: var(--panel);
+  border: 1px solid var(--line);
+}
+
+.cm-history-panel p {
+  max-width: 650px;
+  margin: 8px 0 0;
+
+  color: var(--paper-dim);
+
+  font-size: 12px;
+  line-height: 1.6;
+}
+
+.cm-secondary-button {
+  flex-shrink: 0;
+
+  padding: 11px 14px;
+
+  border: 1px solid var(--line);
+
+  color: var(--amber);
+
+  font-family: var(--font-mono);
+  font-size: 9px;
+}
+
+.cm-secondary-button:hover {
+  border-color: var(--amber);
+}
+
+/* DISCLAIMER */
+
+.cm-disclaimer {
+  margin: 30px auto 0;
+  max-width: 1250px;
+}
+
+/* RESPONSIVE */
+
+@media (max-width: 1000px) {
+  .cm-header {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .case-card {
+    grid-template-columns: 1fr;
+    padding: 20px 0;
+  }
+
+  .case-card-main {
+    padding: 0 0 18px;
+  }
+
+  .case-card-info {
+    border-left: 0;
+    border-top: 1px solid var(--line);
+    padding: 15px 0;
+  }
+
+  .case-open-button {
+    height: 45px;
+    border: 1px solid var(--line);
+    flex-direction: row;
+  }
+}
+
+@media (max-width: 650px) {
+  .case-management {
+    padding: 30px 20px;
+  }
+
+  .cm-overview {
+    grid-template-columns: 1fr;
+  }
+
+  .cm-overview-item {
+    border-right: 0;
+    border-bottom: 1px solid var(--line);
+  }
+
+  .cm-overview-item:last-child {
+    border-bottom: 0;
+  }
+
+  .cm-section-header {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 15px;
+  }
+
+  .case-card-info {
+    grid-template-columns: 1fr 1fr 1fr;
+    gap: 10px;
+  }
+
+  .cm-history-panel {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+}
