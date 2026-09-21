@@ -1,21 +1,37 @@
-import localGraph from '../data/visual_graph.json'
-
-const API_BASE_URL = import.meta.env.VITE_IIS_API_URL || 'http://localhost:8000'
+const API_BASE_URL =
+  import.meta.env.VITE_IIS_API_URL || 'http://localhost:8000'
 
 export interface EntityAttributes {
   [key: string]: unknown
 }
 
 export interface RawGraphNode {
+  id: string
+  type: string
+  label: string
+  attributes?: EntityAttributes
+  case_id?: string
+}
+
+export interface GraphNode {
+  id: string
   entity_id: string
   type: string
   label: string
   attributes: EntityAttributes
+  case_id?: string
+  degree: number
 }
 
-export interface GraphNode extends RawGraphNode {
+export interface RawGraphRelationship {
   id: string
-  degree: number
+  source: string
+  target: string
+  type: string
+  weight?: number
+  observed_at?: string | null
+  confidence?: number
+  attributes?: EntityAttributes
 }
 
 export interface GraphRelationship {
@@ -24,7 +40,7 @@ export interface GraphRelationship {
   target: string
   type: string
   observed_at: string | null
-  evidence: EntityAttributes
+  evidence?: EntityAttributes
   selected_by?: string[]
   confidence?: number
   attributes?: EntityAttributes
@@ -34,20 +50,24 @@ export interface GraphRelationship {
 export interface RawGraph {
   case_id?: string
   nodes: RawGraphNode[]
-  relationships: Omit<GraphRelationship, 'weight'>[]
+  relationships: RawGraphRelationship[]
 }
 
-export interface InvestigationGraph extends RawGraph {
+export interface InvestigationGraph {
+  case_id?: string
   nodes: GraphNode[]
   links: GraphRelationship[]
+  relationships: GraphRelationship[]
 }
 
 export interface CaseInfo {
   id: string
   name: string
   description: string
+  created_at?: string
   num_entities: number
   num_relationships: number
+  num_evidence: number
 }
 
 export interface EntityRelationships {
@@ -55,73 +75,288 @@ export interface EntityRelationships {
   incoming: GraphRelationship[]
 }
 
-let graphPromise: Promise<InvestigationGraph> | undefined
+export interface GraphVersion {
+  id: number
+  case_id: string
+  version_number: number
 
-function normalizeGraph(graph: RawGraph): InvestigationGraph {
-  const degree: Record<string, number> = {}
-  graph.relationships.forEach((relationship) => {
-    degree[relationship.source] = (degree[relationship.source] || 0) + 1
-    degree[relationship.target] = (degree[relationship.target] || 0) + 1
+  trigger_evidence_id: number | null
+  trigger_filename: string | null
+  trigger_source_type: string | null
+
+  summary: string | null
+
+  entity_count: number
+  relationship_count: number
+
+  entities_added: EntityVersionChange[]
+  entities_removed: EntityVersionChange[]
+  entities_changed: EntityVersionChanged[]
+
+  relationships_added: RelationshipVersionChange[]
+  relationships_removed: RelationshipVersionChange[]
+  relationships_changed: RelationshipVersionChanged[]
+
+  snapshot: RawGraph
+
+  created_at: string
+}
+
+export interface EntityVersionChange {
+  id?: string
+  entity_id?: string
+  type: string
+  label: string
+  attributes?: EntityAttributes
+  case_id?: string
+}
+
+export interface EntityVersionChanged {
+  id: string
+  before: EntityVersionChange
+  after: EntityVersionChange
+}
+
+export interface RelationshipVersionChange {
+  id?: string
+  relationship_id?: string
+  source: string
+  target: string
+  type: string
+  weight?: number
+  confidence?: number
+  observed_at?: string | null
+  attributes?: EntityAttributes
+  case_id?: string
+}
+
+export interface RelationshipVersionChanged {
+  id: string
+  before: RelationshipVersionChange
+  after: RelationshipVersionChange
+}
+
+
+// ============================================================
+// GRAPH NORMALIZATION
+// ============================================================
+
+function normalizeGraph(
+  graph: RawGraph,
+): InvestigationGraph {
+  const degreeMap = new Map<string, number>()
+
+  for (const node of graph.nodes) {
+    degreeMap.set(node.id, 0)
+  }
+
+  for (const relationship of graph.relationships) {
+    degreeMap.set(
+      relationship.source,
+      (degreeMap.get(relationship.source) || 0) + 1,
+    )
+
+    degreeMap.set(
+      relationship.target,
+      (degreeMap.get(relationship.target) || 0) + 1,
+    )
+  }
+
+  const nodes: GraphNode[] = graph.nodes.map((node) => ({
+    id: node.id,
+    entity_id: node.id,
+    type: node.type,
+    label: node.label,
+    attributes: node.attributes || {},
+    case_id: node.case_id || graph.case_id,
+    degree: degreeMap.get(node.id) || 0,
+  }))
+
+  const relationships: GraphRelationship[] =
+    graph.relationships.map((relationship) => ({
+      relationship_id: relationship.id,
+      source: relationship.source,
+      target: relationship.target,
+      type: relationship.type,
+      observed_at: relationship.observed_at ?? null,
+      confidence: relationship.confidence,
+      attributes: relationship.attributes || {},
+      weight: relationship.weight ?? 1,
+    }))
+
+  return {
+    case_id: graph.case_id,
+    nodes,
+    links: relationships,
+    relationships,
+  }
+}
+
+
+// ============================================================
+// API HELPER
+// ============================================================
+
+async function apiRequest<T>(
+  path: string,
+  options?: RequestInit,
+): Promise<T> {
+  const response = await fetch(
+    `${API_BASE_URL}${path}`,
+    {
+      ...options,
+      headers: {
+        'Content-Type': 'application/json',
+        ...(options?.headers || {}),
+      },
+    },
+  )
+
+  if (!response.ok) {
+    let message = `Request failed with status ${response.status}`
+
+    try {
+      const body = await response.json()
+
+      if (body?.detail) {
+        message = body.detail
+      }
+    } catch {
+      // Keep default error message.
+    }
+
+    throw new Error(message)
+  }
+
+  return response.json()
+}
+
+
+// ============================================================
+// CASES
+// ============================================================
+
+export async function getCases(): Promise<CaseInfo[]> {
+  return apiRequest<CaseInfo[]>('/cases')
+}
+
+export async function getCase(
+  caseId: string,
+): Promise<CaseInfo> {
+  return apiRequest<CaseInfo>(
+    `/cases/${encodeURIComponent(caseId)}`,
+  )
+}
+
+
+// ============================================================
+// LIVE GRAPH
+// ============================================================
+
+export async function getCaseGraph(
+  caseId: string,
+): Promise<InvestigationGraph> {
+  const graph = await apiRequest<RawGraph>(
+    `/entities/case/${encodeURIComponent(caseId)}/graph`,
+  )
+
+  return normalizeGraph(graph)
+}
+
+export async function getFocusedGraph(
+  caseId: string,
+  entityId: string,
+  depth = 1,
+): Promise<InvestigationGraph> {
+  const params = new URLSearchParams({
+    entity_id: entityId,
+    depth: String(depth),
   })
 
-  return {
-    ...graph,
-    nodes: graph.nodes.map((node) => ({
-      ...node,
-      id: node.entity_id,
-      degree: degree[node.entity_id] || 0,
-    })),
-    links: graph.relationships.map((relationship) => ({
-      ...relationship,
-      weight: relationship.confidence || 1,
-    })),
-  }
+  const graph = await apiRequest<RawGraph>(
+    `/entities/case/${encodeURIComponent(caseId)}/graph?${params.toString()}`,
+  )
+
+  return normalizeGraph(graph)
 }
 
-async function loadGraph(): Promise<InvestigationGraph> {
-  try {
-    const response = await fetch(`${API_BASE_URL}/graph/visual`)
-    if (!response.ok) throw new Error(`Graph request failed: ${response.status}`)
-    return normalizeGraph(await response.json() as RawGraph)
-  } catch {
-    return normalizeGraph(localGraph as RawGraph)
-  }
+export async function getVisualGraph(
+  caseId: string,
+): Promise<InvestigationGraph> {
+  return getCaseGraph(caseId)
 }
 
-export function getVisualGraph(): Promise<InvestigationGraph> {
-  if (!graphPromise) graphPromise = loadGraph()
-  return graphPromise
+
+// ============================================================
+// GRAPH VERSIONS
+// ============================================================
+
+export async function getGraphVersions(
+  caseId: string,
+): Promise<GraphVersion[]> {
+  return apiRequest<GraphVersion[]>(
+    `/graph-versions/case/${encodeURIComponent(caseId)}`,
+  )
 }
 
-export async function getCase(): Promise<CaseInfo> {
-  const graph = await getVisualGraph()
-  const caseEntity = graph.nodes.find((node) => node.type === 'Case')
-  return {
-    id: graph.case_id || caseEntity?.entity_id || 'IIS',
-    name: caseEntity?.attributes?.name as string || graph.case_id || 'Investigation Network',
-    description: 'Evidence-backed entities and relationships selected from ingested investigation data.',
-    num_entities: graph.nodes.length,
-    num_relationships: graph.relationships.length,
-  }
+export async function getGraphVersion(
+  caseId: string,
+  versionNumber: number,
+): Promise<GraphVersion> {
+  return apiRequest<GraphVersion>(
+    `/graph-versions/case/${encodeURIComponent(caseId)}/${versionNumber}`,
+  )
 }
 
-export async function getEntity(entityId: string): Promise<GraphNode | null> {
-  const graph = await getVisualGraph()
-  return graph.nodes.find((entity) => entity.entity_id === entityId) || null
+export function graphVersionToInvestigationGraph(
+  version: GraphVersion,
+): InvestigationGraph {
+  return normalizeGraph(version.snapshot)
 }
 
-export async function getEntities(): Promise<GraphNode[]> {
-  const graph = await getVisualGraph()
+
+// ============================================================
+// ENTITIES
+// ============================================================
+
+export async function getEntity(
+  entityId: string,
+  caseId: string,
+): Promise<GraphNode | null> {
+  const graph = await getCaseGraph(caseId)
+
+  return (
+    graph.nodes.find(
+      (node) =>
+        node.entity_id === entityId ||
+        node.id === entityId,
+    ) || null
+  )
+}
+
+export async function getEntities(
+  caseId: string,
+): Promise<GraphNode[]> {
+  const graph = await getCaseGraph(caseId)
+
   return graph.nodes
 }
 
-export async function getEntityRelationships(entityId: string): Promise<EntityRelationships> {
-  const graph = await getVisualGraph()
-  const relationships = graph.links.filter(
-    (relationship) => relationship.source === entityId || relationship.target === entityId
-  )
+export async function getEntityRelationships(
+  entityId: string,
+  caseId: string,
+): Promise<EntityRelationships> {
+  const graph = await getCaseGraph(caseId)
+
   return {
-    outgoing: relationships.filter((relationship) => relationship.source === entityId),
-    incoming: relationships.filter((relationship) => relationship.target === entityId),
+    outgoing: graph.relationships.filter(
+      (relationship) =>
+        relationship.source === entityId,
+    ),
+
+    incoming: graph.relationships.filter(
+      (relationship) =>
+        relationship.target === entityId,
+    ),
   }
 }

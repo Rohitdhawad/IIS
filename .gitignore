@@ -1,3 +1,4 @@
 BACKEND_TEMP/
+.env
 __pycache__/
 *.pyc

@@ -1,223 +1,863 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
+import { useParams } from 'react-router-dom'
+
+import {
+  getGraphVersion,
+  getGraphVersions,
+  type GraphVersion,
+} from '../lib/dataClient'
+
 import './GraphVersions.css'
 
-type GraphVersion = {
-  version: string
-  date: string
-  time: string
-  trigger: string
-  source: string
-  entities: number
-  relationships: number
-  changes: string
-  status: 'Current' | 'Archived'
+
+function formatDate(value?: string | null) {
+  if (!value) return '—'
+
+  const date = new Date(value)
+
+  if (Number.isNaN(date.getTime())) {
+    return '—'
+  }
+
+  return date.toLocaleString('en-GB', {
+    day: '2-digit',
+    month: 'short',
+    year: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+  })
 }
 
-const GRAPH_VERSIONS: GraphVersion[] = [
-  {
-    version: 'GRAPH V3',
-    date: '14 Mar 2026',
-    time: '16:42',
-    trigger: 'Investigator review',
-    source: 'Manual graph update',
-    entities: 8,
-    relationships: 11,
-    changes: '+1 relationship',
-    status: 'Current',
-  },
-  {
-    version: 'GRAPH V2',
-    date: '10 Mar 2026',
-    time: '11:18',
-    trigger: 'Surveillance evidence',
-    source: 'Surveillance Report',
-    entities: 8,
-    relationships: 10,
-    changes: '+2 relationships',
-    status: 'Archived',
-  },
-  {
-    version: 'GRAPH V1',
-    date: '08 Mar 2026',
-    time: '09:35',
-    trigger: 'Financial transaction analysis',
-    source: 'Financial Transaction',
-    entities: 8,
-    relationships: 8,
-    changes: 'Initial network',
-    status: 'Archived',
-  },
-]
+
+function ChangeCount({
+  label,
+  count,
+}: {
+  label: string
+  count: number
+}) {
+  return (
+    <div className="gv-change-count">
+      <strong>{count}</strong>
+      <span>{label}</span>
+    </div>
+  )
+}
+
 
 export default function GraphVersions() {
-  const [selectedVersion, setSelectedVersion] = useState('GRAPH V3')
+  const { caseId } = useParams()
 
-  const selected = GRAPH_VERSIONS.find(
-    (version) => version.version === selectedVersion,
-  )
+  const [versions, setVersions] =
+    useState<GraphVersion[]>([])
+
+  const [selectedVersion, setSelectedVersion] =
+    useState<GraphVersion | null>(null)
+
+  const [loading, setLoading] =
+    useState(true)
+
+  const [detailLoading, setDetailLoading] =
+    useState(false)
+
+  const [error, setError] =
+    useState('')
+
+
+  useEffect(() => {
+    if (!caseId) {
+      setError('No investigation case selected.')
+      setLoading(false)
+      return
+    }
+
+    let cancelled = false
+
+    async function loadVersions() {
+      try {
+        setLoading(true)
+        setError('')
+
+        const result =
+          await getGraphVersions(caseId)
+
+        if (cancelled) return
+
+        setVersions(result)
+
+        if (result.length > 0) {
+          setSelectedVersion(
+            result[result.length - 1],
+          )
+        }
+      } catch (err) {
+        if (cancelled) return
+
+        setError(
+          err instanceof Error
+            ? err.message
+            : 'Failed to load graph versions.',
+        )
+      } finally {
+        if (!cancelled) {
+          setLoading(false)
+        }
+      }
+    }
+
+    loadVersions()
+
+    return () => {
+      cancelled = true
+    }
+  }, [caseId])
+
+
+  async function selectVersion(
+    versionNumber: number,
+  ) {
+    if (!caseId) return
+
+    try {
+      setDetailLoading(true)
+      setError('')
+
+      const version =
+        await getGraphVersion(
+          caseId,
+          versionNumber,
+        )
+
+      setSelectedVersion(version)
+    } catch (err) {
+      setError(
+        err instanceof Error
+          ? err.message
+          : 'Failed to load graph version.',
+      )
+    } finally {
+      setDetailLoading(false)
+    }
+  }
+
+
+  if (loading) {
+    return (
+      <div className="graph-versions-page">
+        <div className="gv-state">
+          <div className="gv-spinner" />
+          <strong>
+            Loading graph history...
+          </strong>
+        </div>
+      </div>
+    )
+  }
+
 
   return (
     <div className="graph-versions-page">
-      <div className="page-header">
-        <div className="eyebrow mono">NETWORK HISTORY</div>
 
-        <h2>Graph Versions</h2>
+      {/* =================================================
+          HEADER
+      ================================================= */}
 
-        <p className="intro-text">
-          Review immutable snapshots of the investigation network as new
-          evidence is ingested or the graph is manually updated.
-        </p>
-      </div>
+      <header className="gv-header">
 
-      <div className="version-layout">
-        {/* VERSION LIST */}
-        <section className="versions-panel">
-          <div className="panel-heading">
-            <div>
-              <div className="section-label">NETWORK SNAPSHOTS</div>
-              <h3>Graph history</h3>
-            </div>
-
-            <span className="version-count mono">
-              {GRAPH_VERSIONS.length} versions
-            </span>
+        <div>
+          <div className="gv-eyebrow">
+            INVESTIGATION HISTORY
           </div>
 
-          <div className="version-list">
-            {GRAPH_VERSIONS.map((version) => (
-              <button
-                key={version.version}
-                className={`version-row ${
-                  selectedVersion === version.version ? 'selected' : ''
-                }`}
-                onClick={() => setSelectedVersion(version.version)}
-              >
-                <div className="version-marker">
-                  <span />
-                </div>
+          <h1>
+            Graph Versions
+          </h1>
 
-                <div className="version-main">
-                  <div className="version-top">
-                    <span className="version-name mono">
-                      {version.version}
-                    </span>
+          <p>
+            Historical snapshots of the investigation
+            network created after evidence analysis.
+          </p>
+        </div>
 
-                    <span
-                      className={`version-status ${
-                        version.status === 'Current' ? 'current' : ''
-                      }`}
-                    >
-                      {version.status}
-                    </span>
-                  </div>
+        <div className="gv-case-id">
+          <span>CASE</span>
+          <strong>
+            {caseId || '—'}
+          </strong>
+        </div>
 
-                  <div className="version-trigger">
-                    {version.trigger}
-                  </div>
+      </header>
 
-                  <div className="version-meta mono">
-                    {version.date} · {version.time}
-                  </div>
-                </div>
-              </button>
-            ))}
+
+      {/* =================================================
+          ERROR
+      ================================================= */}
+
+      {error && (
+        <div className="gv-error">
+          {error}
+        </div>
+      )}
+
+
+      {/* =================================================
+          EMPTY STATE
+      ================================================= */}
+
+      {versions.length === 0 ? (
+        <div className="gv-empty">
+
+          <div className="gv-empty-icon">
+            GV
           </div>
-        </section>
 
-        {/* VERSION DETAIL */}
-        <section className="version-detail">
-          {selected && (
-            <>
-              <div className="detail-heading">
-                <div>
-                  <div className="eyebrow mono">SELECTED SNAPSHOT</div>
+          <h2>
+            No graph versions yet
+          </h2>
 
-                  <h3>{selected.version}</h3>
+          <p>
+            Analyze evidence from the Data / Reports
+            section to create the first investigation
+            snapshot.
+          </p>
 
-                  <p>
-                    {selected.trigger} · {selected.source}
-                  </p>
-                </div>
+        </div>
+      ) : (
 
-                <span
-                  className={`detail-status ${
-                    selected.status === 'Current' ? 'current' : ''
-                  }`}
-                >
-                  {selected.status}
+        <div className="gv-layout">
+
+          {/* =============================================
+              VERSION LIST
+          ============================================= */}
+
+          <aside className="gv-version-list">
+
+            <div className="gv-list-header">
+              <div>
+                <strong>
+                  Saved Versions
+                </strong>
+
+                <span>
+                  {versions.length}{' '}
+                  snapshot
+                  {versions.length === 1
+                    ? ''
+                    : 's'}
                 </span>
               </div>
+            </div>
 
-              <div className="version-metrics">
-                <div className="metric-card">
-                  <span className="metric-label">ENTITIES</span>
-                  <strong>{selected.entities}</strong>
-                </div>
 
-                <div className="metric-card">
-                  <span className="metric-label">RELATIONSHIPS</span>
-                  <strong>{selected.relationships}</strong>
-                </div>
+            <div className="gv-list">
 
-                <div className="metric-card">
-                  <span className="metric-label">CHANGE</span>
-                  <strong className="change-value">
-                    {selected.changes}
-                  </strong>
-                </div>
+              {versions.map(
+                (version) => {
+
+                  const active =
+                    selectedVersion?.version_number ===
+                    version.version_number
+
+                  return (
+                    <button
+                      key={version.id}
+                      type="button"
+                      className={
+                        active
+                          ? 'gv-version-item active'
+                          : 'gv-version-item'
+                      }
+                      onClick={() =>
+                        selectVersion(
+                          version.version_number,
+                        )
+                      }
+                    >
+
+                      <div className="gv-version-number">
+                        {version.version_number}
+                      </div>
+
+                      <div className="gv-version-item-main">
+
+                        <strong>
+                          Version{' '}
+                          {version.version_number}
+                        </strong>
+
+                        <span>
+                          {formatDate(
+                            version.created_at,
+                          )}
+                        </span>
+
+                        <small>
+                          {version.entity_count}{' '}
+                          entities ·{' '}
+                          {version.relationship_count}{' '}
+                          relationships
+                        </small>
+
+                      </div>
+
+                    </button>
+                  )
+                },
+              )}
+
+            </div>
+
+          </aside>
+
+
+          {/* =============================================
+              DETAILS
+          ============================================= */}
+
+          <main className="gv-details">
+
+            {detailLoading ? (
+              <div className="gv-detail-loading">
+                <div className="gv-spinner" />
+                Loading version details...
               </div>
+            ) : selectedVersion ? (
+              <>
 
-              <div className="snapshot-section">
-                <div className="section-label">VERSION INFORMATION</div>
+                {/* ---------------------------------------
+                    DETAIL HEADER
+                --------------------------------------- */}
 
-                <div className="info-grid">
-                  <div className="info-item">
-                    <span>Created</span>
-                    <strong className="mono">
-                      {selected.date} · {selected.time}
-                    </strong>
+                <section className="gv-detail-header">
+
+                  <div>
+
+                    <div className="gv-version-badge">
+                      VERSION{' '}
+                      {
+                        selectedVersion.version_number
+                      }
+                    </div>
+
+                    <h2>
+                      Graph Snapshot
+                    </h2>
+
+                    <p>
+                      Created{' '}
+                      {formatDate(
+                        selectedVersion.created_at,
+                      )}
+                    </p>
+
                   </div>
 
-                  <div className="info-item">
-                    <span>Trigger</span>
-                    <strong>{selected.trigger}</strong>
+                  <div className="gv-snapshot-stats">
+
+                    <div>
+                      <strong>
+                        {
+                          selectedVersion.entity_count
+                        }
+                      </strong>
+                      <span>
+                        Entities
+                      </span>
+                    </div>
+
+                    <div>
+                      <strong>
+                        {
+                          selectedVersion.relationship_count
+                        }
+                      </strong>
+                      <span>
+                        Relationships
+                      </span>
+                    </div>
+
                   </div>
 
-                  <div className="info-item">
-                    <span>Source</span>
-                    <strong>{selected.source}</strong>
+                </section>
+
+
+                {/* ---------------------------------------
+                    SUMMARY
+                --------------------------------------- */}
+
+                <section className="gv-section">
+
+                  <div className="gv-section-title">
+                    <h3>
+                      Change Summary
+                    </h3>
                   </div>
 
-                  <div className="info-item">
-                    <span>Graph state</span>
-                    <strong>
-                      {selected.status === 'Current'
-                        ? 'Active investigation state'
-                        : 'Historical snapshot'}
-                    </strong>
+                  <div className="gv-summary">
+                    {selectedVersion.summary ||
+                      'No change summary available.'}
                   </div>
-                </div>
-              </div>
 
-              <div className="snapshot-note">
-                <span className="note-icon">i</span>
+                </section>
 
-                <p>
-                  This snapshot is immutable. Subsequent evidence ingestion
-                  or investigator edits create a new graph version rather
-                  than modifying this state.
-                </p>
-              </div>
-            </>
-          )}
-        </section>
-      </div>
 
-      <div className="disclaimer-block">
-        Graph versions represent analytical states of the investigation
-        network. Structural changes and connectivity do not establish intent,
-        guilt, or criminal involvement.
-      </div>
+                {/* ---------------------------------------
+                    TRIGGER
+                --------------------------------------- */}
+
+                <section className="gv-section">
+
+                  <div className="gv-section-title">
+                    <h3>
+                      Trigger Evidence
+                    </h3>
+                  </div>
+
+                  <div className="gv-trigger">
+
+                    <div>
+                      <span>
+                        Evidence
+                      </span>
+
+                      <strong>
+                        {
+                          selectedVersion.trigger_filename ||
+                          'Manual / Initial Snapshot'
+                        }
+                      </strong>
+                    </div>
+
+                    <div>
+                      <span>
+                        Source Type
+                      </span>
+
+                      <strong>
+                        {
+                          selectedVersion.trigger_source_type ||
+                          '—'
+                        }
+                      </strong>
+                    </div>
+
+                    <div>
+                      <span>
+                        Evidence ID
+                      </span>
+
+                      <strong>
+                        {
+                          selectedVersion.trigger_evidence_id ??
+                          '—'
+                        }
+                      </strong>
+                    </div>
+
+                  </div>
+
+                </section>
+
+
+                {/* ---------------------------------------
+                    CHANGE COUNTS
+                --------------------------------------- */}
+
+                <section className="gv-section">
+
+                  <div className="gv-section-title">
+                    <h3>
+                      Changes in This Version
+                    </h3>
+                  </div>
+
+                  <div className="gv-change-grid">
+
+                    <div className="gv-change-card">
+
+                      <div className="gv-change-card-title">
+                        Entities
+                      </div>
+
+                      <div className="gv-change-counts">
+
+                        <ChangeCount
+                          label="Added"
+                          count={
+                            selectedVersion
+                              .entities_added
+                              .length
+                          }
+                        />
+
+                        <ChangeCount
+                          label="Removed"
+                          count={
+                            selectedVersion
+                              .entities_removed
+                              .length
+                          }
+                        />
+
+                        <ChangeCount
+                          label="Changed"
+                          count={
+                            selectedVersion
+                              .entities_changed
+                              .length
+                          }
+                        />
+
+                      </div>
+
+                    </div>
+
+
+                    <div className="gv-change-card">
+
+                      <div className="gv-change-card-title">
+                        Relationships
+                      </div>
+
+                      <div className="gv-change-counts">
+
+                        <ChangeCount
+                          label="Added"
+                          count={
+                            selectedVersion
+                              .relationships_added
+                              .length
+                          }
+                        />
+
+                        <ChangeCount
+                          label="Removed"
+                          count={
+                            selectedVersion
+                              .relationships_removed
+                              .length
+                          }
+                        />
+
+                        <ChangeCount
+                          label="Changed"
+                          count={
+                            selectedVersion
+                              .relationships_changed
+                              .length
+                          }
+                        />
+
+                      </div>
+
+                    </div>
+
+                  </div>
+
+                </section>
+
+
+                {/* ---------------------------------------
+                    ENTITY CHANGES
+                --------------------------------------- */}
+
+                <section className="gv-section">
+
+                  <div className="gv-section-title">
+                    <h3>
+                      Entity Changes
+                    </h3>
+
+                    <span>
+                      {
+                        selectedVersion
+                          .entities_added
+                          .length +
+                        selectedVersion
+                          .entities_removed
+                          .length +
+                        selectedVersion
+                          .entities_changed
+                          .length
+                      }{' '}
+                      changes
+                    </span>
+                  </div>
+
+
+                  <div className="gv-change-list">
+
+                    {selectedVersion
+                      .entities_added
+                      .map(
+                        (entity) => (
+                          <div
+                            className="gv-change-row added"
+                            key={`entity-added-${entity.id}`}
+                          >
+                            <span className="gv-change-tag">
+                              ADDED
+                            </span>
+
+                            <div>
+                              <strong>
+                                {entity.label}
+                              </strong>
+
+                              <small>
+                                {entity.type}
+                              </small>
+                            </div>
+                          </div>
+                        ),
+                      )}
+
+
+                    {selectedVersion
+                      .entities_removed
+                      .map(
+                        (entity) => (
+                          <div
+                            className="gv-change-row removed"
+                            key={`entity-removed-${entity.id}`}
+                          >
+                            <span className="gv-change-tag">
+                              REMOVED
+                            </span>
+
+                            <div>
+                              <strong>
+                                {entity.label}
+                              </strong>
+
+                              <small>
+                                {entity.type}
+                              </small>
+                            </div>
+                          </div>
+                        ),
+                      )}
+
+
+                    {selectedVersion
+                      .entities_changed
+                      .map(
+                        (change) => (
+                          <div
+                            className="gv-change-row changed"
+                            key={`entity-changed-${change.id}`}
+                          >
+                            <span className="gv-change-tag">
+                              CHANGED
+                            </span>
+
+                            <div>
+                              <strong>
+                                {
+                                  change.after
+                                    ?.label ||
+                                  change.before
+                                    ?.label
+                                }
+                              </strong>
+
+                              <small>
+                                {
+                                  change.after
+                                    ?.type ||
+                                  change.before
+                                    ?.type
+                                }
+                              </small>
+                            </div>
+                          </div>
+                        ),
+                      )}
+
+
+                    {selectedVersion
+                      .entities_added.length === 0 &&
+                      selectedVersion
+                        .entities_removed.length === 0 &&
+                      selectedVersion
+                        .entities_changed.length === 0 && (
+                        <div className="gv-no-changes">
+                          No entity changes recorded.
+                        </div>
+                      )}
+
+                  </div>
+
+                </section>
+
+
+                {/* ---------------------------------------
+                    RELATIONSHIP CHANGES
+                --------------------------------------- */}
+
+                <section className="gv-section">
+
+                  <div className="gv-section-title">
+                    <h3>
+                      Relationship Changes
+                    </h3>
+
+                    <span>
+                      {
+                        selectedVersion
+                          .relationships_added
+                          .length +
+                        selectedVersion
+                          .relationships_removed
+                          .length +
+                        selectedVersion
+                          .relationships_changed
+                          .length
+                      }{' '}
+                      changes
+                    </span>
+                  </div>
+
+
+                  <div className="gv-change-list">
+
+                    {selectedVersion
+                      .relationships_added
+                      .map(
+                        (relationship) => (
+                          <div
+                            className="gv-change-row added"
+                            key={`relationship-added-${relationship.id}`}
+                          >
+                            <span className="gv-change-tag">
+                              ADDED
+                            </span>
+
+                            <div>
+                              <strong>
+                                {
+                                  relationship.type
+                                }
+                              </strong>
+
+                              <small>
+                                {
+                                  relationship.source
+                                }
+                                {' → '}
+                                {
+                                  relationship.target
+                                }
+                              </small>
+                            </div>
+                          </div>
+                        ),
+                      )}
+
+
+                    {selectedVersion
+                      .relationships_removed
+                      .map(
+                        (relationship) => (
+                          <div
+                            className="gv-change-row removed"
+                            key={`relationship-removed-${relationship.id}`}
+                          >
+                            <span className="gv-change-tag">
+                              REMOVED
+                            </span>
+
+                            <div>
+                              <strong>
+                                {
+                                  relationship.type
+                                }
+                              </strong>
+
+                              <small>
+                                {
+                                  relationship.source
+                                }
+                                {' → '}
+                                {
+                                  relationship.target
+                                }
+                              </small>
+                            </div>
+                          </div>
+                        ),
+                      )}
+
+
+                    {selectedVersion
+                      .relationships_changed
+                      .map(
+                        (change) => (
+                          <div
+                            className="gv-change-row changed"
+                            key={`relationship-changed-${change.id}`}
+                          >
+                            <span className="gv-change-tag">
+                              CHANGED
+                            </span>
+
+                            <div>
+                              <strong>
+                                {
+                                  change.after
+                                    ?.type ||
+                                  change.before
+                                    ?.type
+                                }
+                              </strong>
+
+                              <small>
+                                {
+                                  change.after
+                                    ?.source ||
+                                  change.before
+                                    ?.source
+                                }
+                                {' → '}
+                                {
+                                  change.after
+                                    ?.target ||
+                                  change.before
+                                    ?.target
+                                }
+                              </small>
+                            </div>
+                          </div>
+                        ),
+                      )}
+
+
+                    {selectedVersion
+                      .relationships_added
+                      .length === 0 &&
+                      selectedVersion
+                        .relationships_removed
+                        .length === 0 &&
+                      selectedVersion
+                        .relationships_changed
+                        .length === 0 && (
+                        <div className="gv-no-changes">
+                          No relationship changes recorded.
+                        </div>
+                      )}
+
+                  </div>
+
+                </section>
+
+              </>
+            ) : null}
+
+          </main>
+
+        </div>
+      )}
+
     </div>
   )
 }

@@ -3,25 +3,67 @@
   --panel: #161b19;
   --panel-2: #1d2320;
   --panel-3: #232a26;
+
   --line: #2a322e;
   --line-soft: #20261f;
+
   --paper: #d9d3c1;
   --paper-dim: #9a9689;
   --paper-faint: #6c6a5f;
+
   --amber: #c99a4d;
   --amber-dim: #8a6f42;
   --amber-glow: rgba(201, 154, 77, 0.15);
+
   --teal: #5f8b86;
   --teal-dim: #3d5b57;
+
   --red: #b5453f;
+
   --sidebar-w: 248px;
-  --font-sans: 'IBM Plex Sans', -apple-system, sans-serif;
+
+  --font-sans: 'IBM Plex Sans', -apple-system, BlinkMacSystemFont, sans-serif;
   --font-mono: 'IBM Plex Mono', 'SFMono-Regular', Menlo, monospace;
 }
 
-* { box-sizing: border-box; }
+/* =========================================================
+   LIGHT THEME
+   ========================================================= */
 
-html, body, #root {
+[data-theme='light'] {
+  --bg: #f3f1eb;
+  --panel: #ffffff;
+  --panel-2: #eeece5;
+  --panel-3: #e5e2d9;
+
+  --line: #d4d0c5;
+  --line-soft: #e5e1d8;
+
+  --paper: #20231f;
+  --paper-dim: #62655e;
+  --paper-faint: #8a8c84;
+
+  --amber: #9a6d27;
+  --amber-dim: #b18a4d;
+  --amber-glow: rgba(154, 109, 39, 0.12);
+
+  --teal: #477872;
+  --teal-dim: #739893;
+
+  --red: #a33c37;
+}
+
+/* =========================================================
+   GLOBAL
+   ========================================================= */
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#root {
   height: 100%;
   margin: 0;
   padding: 0;
@@ -32,31 +74,94 @@ body {
   color: var(--paper);
   font-family: var(--font-sans);
   -webkit-font-smoothing: antialiased;
+
+  transition:
+    background-color 0.2s ease,
+    color 0.2s ease;
 }
 
-::selection { background: var(--amber-dim); color: #fff; }
+::selection {
+  background: var(--amber-dim);
+  color: #fff;
+}
 
-a { color: inherit; text-decoration: none; }
-
-.mono { font-family: var(--font-mono); }
+a {
+  color: inherit;
+  text-decoration: none;
+}
 
 button {
   font-family: inherit;
   cursor: pointer;
+  color: inherit;
 }
 
-/* Scrollbar - subtle, matches theme */
-::-webkit-scrollbar { width: 8px; height: 8px; }
-::-webkit-scrollbar-track { background: transparent; }
-::-webkit-scrollbar-thumb { background: var(--line); border-radius: 4px; }
-::-webkit-scrollbar-thumb:hover { background: var(--amber-dim); }
+input,
+textarea,
+select {
+  font-family: inherit;
+}
 
-/* Focus visibility for accessibility */
-a:focus-visible, button:focus-visible, [tabindex]:focus-visible {
+.mono {
+  font-family: var(--font-mono);
+}
+
+/* =========================================================
+   SCROLLBAR
+   ========================================================= */
+
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--line);
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--amber-dim);
+}
+
+/* =========================================================
+   ACCESSIBILITY
+   ========================================================= */
+
+a:focus-visible,
+button:focus-visible,
+[tabindex]:focus-visible {
   outline: 2px solid var(--amber);
   outline-offset: 2px;
 }
 
 @media (prefers-reduced-motion: reduce) {
-  * { animation-duration: 0.01ms !important; transition-duration: 0.01ms !important; }
+  * {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+/* =========================================================
+   THEME TRANSITIONS
+   ========================================================= */
+
+body,
+button,
+input,
+textarea,
+select,
+.card,
+.panel,
+.sidebar,
+header,
+main {
+  transition:
+    background-color 0.2s ease,
+    border-color 0.2s ease,
+    color 0.2s ease;
 }
