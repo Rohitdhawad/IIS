@@ -1,24 +1,32 @@
-import { useEffect, useMemo, useState, type ChangeEvent } from 'react'
+import {
+  useEffect,
+  useMemo,
+  useState,
+  type ChangeEvent,
+} from 'react'
 import { Link, useParams } from 'react-router-dom'
 
 import {
   getCase,
+  getGraphVersion,
+  getGraphVersions,
+  graphVersionToInvestigationGraph,
   getVisualGraph,
   type CaseInfo,
-  type InvestigationGraph,
   type GraphNode,
   type GraphRelationship,
+  type InvestigationGraph,
+  type GraphVersion,
 } from '../lib/dataClient'
 
-import { buildGraphVersions } from '../lib/graphVersions'
 import NetworkGraph from '../components/NetworkGraph'
 
 import './Dashboard.css'
 
 
-/* =========================================
+/* =========================================================
    ICONS
-========================================= */
+========================================================= */
 
 function Icon({
   type,
@@ -27,10 +35,12 @@ function Icon({
     | 'entities'
     | 'relationships'
     | 'records'
-    | 'person'
-    | 'link'
-    | 'location'
     | 'calendar'
+    | 'person'
+    | 'location'
+    | 'link'
+    | 'assistant'
+    | 'evidence'
 }) {
   const paths = {
     entities: (
@@ -58,10 +68,31 @@ function Icon({
       </>
     ),
 
+    calendar: (
+      <>
+        <rect
+          x="4"
+          y="5"
+          width="16"
+          height="16"
+          rx="2"
+        />
+        <path d="M8 3v4M16 3v4M4 10h16" />
+        <path d="M8 14h.01M12 14h.01M16 14h.01M8 18h.01M12 18h.01" />
+      </>
+    ),
+
     person: (
       <>
         <circle cx="12" cy="8" r="3.2" />
         <path d="M5 21c0-4 2.8-6 7-6s7 2 7 6" />
+      </>
+    ),
+
+    location: (
+      <>
+        <path d="M12 21s7-6.1 7-12a7 7 0 1 0-14 0c0 5.9 7 12 7 12z" />
+        <circle cx="12" cy="9" r="2.2" />
       </>
     ),
 
@@ -73,18 +104,19 @@ function Icon({
       </>
     ),
 
-    location: (
+    assistant: (
       <>
-        <path d="M12 21s7-6.1 7-12a7 7 0 1 0-14 0c0 5.9 7 12 7 12z" />
-        <circle cx="12" cy="9" r="2.2" />
+        <rect x="4" y="5" width="16" height="14" rx="3" />
+        <path d="M8 10h8M8 14h5" />
+        <path d="M9 19v2M15 19v2" />
       </>
     ),
 
-    calendar: (
+    evidence: (
       <>
-        <rect x="4" y="5" width="16" height="16" rx="2" />
-        <path d="M8 3v4M16 3v4M4 10h16" />
-        <path d="M8 14h.01M12 14h.01M16 14h.01M8 18h.01M12 18h.01" />
+        <path d="M6 3h9l4 4v14H6z" />
+        <path d="M15 3v5h5" />
+        <path d="M9 13h6M9 17h4" />
       </>
     ),
   }
@@ -106,149 +138,314 @@ function Icon({
 }
 
 
-/* =========================================
+/* =========================================================
+   DATE
+========================================================= */
+
+function formatDate(value?: string | null) {
+  if (!value) return 'No data'
+
+  const date = new Date(value)
+
+  if (Number.isNaN(date.getTime())) {
+    return 'No data'
+  }
+
+  return date.toLocaleString('en-GB', {
+    day: '2-digit',
+    month: 'short',
+    year: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+  })
+}
+
+
+/* =========================================================
    DASHBOARD
-========================================= */
+========================================================= */
 
 export default function Dashboard() {
   const { caseId } = useParams()
 
-  const [caseInfo, setCaseInfo] = useState<CaseInfo | null>(null)
-  const [graph, setGraph] = useState<InvestigationGraph | null>(null)
+  const [caseInfo, setCaseInfo] =
+    useState<CaseInfo | null>(null)
 
-  const [selectedVersion, setSelectedVersion] = useState('3')
+  const [graph, setGraph] =
+    useState<InvestigationGraph | null>(null)
 
-  const [entityType, setEntityType] = useState('All')
-  const [relationshipType, setRelationshipType] = useState('All')
+  const [graphVersions, setGraphVersions] =
+    useState<GraphVersion[]>([])
+
+  const [selectedVersion, setSelectedVersion] =
+    useState<number | null>(null)
+
+  const [loading, setLoading] =
+    useState(true)
+
+  const [versionLoading, setVersionLoading] =
+    useState(false)
+
+  const [error, setError] =
+    useState('')
+
+  const [entityType, setEntityType] =
+    useState('All')
+
+  const [relationshipType, setRelationshipType] =
+    useState('All')
 
 
-  /* =========================================
-     LOAD CASE + GRAPH
-  ========================================= */
+  /* =======================================================
+     LOAD CASE + LIVE GRAPH + SAVED VERSIONS
+  ======================================================= */
 
   useEffect(() => {
-    getCase().then(setCaseInfo)
-    getVisualGraph().then(setGraph)
-  }, [])
+    if (!caseId) {
+      setError('No investigation case selected.')
+      setLoading(false)
+      return
+    }
+
+    let cancelled = false
+
+    async function loadDashboard() {
+      try {
+        setLoading(true)
+        setError('')
+
+        const [
+          currentCase,
+          currentGraph,
+          versions,
+        ] = await Promise.all([
+          getCase(caseId),
+          getVisualGraph(caseId),
+          getGraphVersions(caseId),
+        ])
+
+        if (cancelled) return
+
+        setCaseInfo(currentCase)
+        setGraph(currentGraph)
+        setGraphVersions(versions)
+
+        if (versions.length > 0) {
+          setSelectedVersion(
+            versions[versions.length - 1].version_number,
+          )
+        }
+      } catch (err) {
+        if (cancelled) return
+
+        console.error(
+          'Failed to load dashboard:',
+          err,
+        )
+
+        setError(
+          err instanceof Error
+            ? err.message
+            : 'Unable to load investigation data.',
+        )
+      } finally {
+        if (!cancelled) {
+          setLoading(false)
+        }
+      }
+    }
+
+    loadDashboard()
+
+    return () => {
+      cancelled = true
+    }
+  }, [caseId])
 
 
-  /* =========================================
-     GRAPH VERSIONS
-  ========================================= */
+  /* =======================================================
+     LOAD SELECTED VERSION
+  ======================================================= */
 
-  const graphVersions = useMemo(
-    () => (graph ? buildGraphVersions(graph) : []),
+  async function handleVersionChange(
+    versionNumber: number,
+  ) {
+    if (!caseId) return
+
+    try {
+      setVersionLoading(true)
+      setError('')
+
+      const version =
+        await getGraphVersion(
+          caseId,
+          versionNumber,
+        )
+
+      setGraph(
+        graphVersionToInvestigationGraph(
+          version,
+        ),
+      )
+
+      setSelectedVersion(versionNumber)
+    } catch (err) {
+      console.error(
+        'Failed to load graph version:',
+        err,
+      )
+
+      setError(
+        err instanceof Error
+          ? err.message
+          : 'Unable to load graph version.',
+      )
+    } finally {
+      setVersionLoading(false)
+    }
+  }
+
+
+  /* =======================================================
+     FILTER OPTIONS
+  ======================================================= */
+
+  const entityTypes = useMemo(
+    () =>
+      graph
+        ? [
+            ...new Set(
+              graph.nodes.map(
+                (node) => node.type,
+              ),
+            ),
+          ].sort()
+        : [],
     [graph],
   )
 
-  const activeVersion =
-    graphVersions.find(
-      (version) => version.id === selectedVersion,
-    ) ||
-    graphVersions[graphVersions.length - 1]
-
-  const activeGraph =
-    activeVersion?.graph || graph
-
-
-  /* =========================================
-     FILTER OPTIONS
-  ========================================= */
-
-  const entityTypes = activeGraph
-    ? [
-        ...new Set(
-          activeGraph.nodes.map(
-            (node) => node.type,
-          ),
-        ),
-      ].sort()
-    : []
-
-  const relationshipTypes = activeGraph
-    ? [
-        ...new Set(
-          activeGraph.relationships.map(
-            (relationship) => relationship.type,
-          ),
-        ),
-      ].sort()
-    : []
+  const relationshipTypes = useMemo(
+    () =>
+      graph
+        ? [
+            ...new Set(
+              graph.relationships.map(
+                (relationship) =>
+                  relationship.type,
+              ),
+            ),
+          ].sort()
+        : [],
+    [graph],
+  )
 
 
-  /* =========================================
+  /* =======================================================
      FILTERED GRAPH
-  ========================================= */
+  ======================================================= */
 
   const filteredNodes: GraphNode[] =
-    activeGraph?.nodes.filter(
+    graph?.nodes.filter(
       (node) =>
         entityType === 'All' ||
         node.type === entityType,
     ) || []
 
-  const visibleIds = new Set(
-    filteredNodes.map((node) => node.id),
-  )
+  const visibleIds =
+    new Set(
+      filteredNodes.map(
+        (node) => node.id,
+      ),
+    )
 
   const filteredLinks: GraphRelationship[] =
-    activeGraph?.links.filter((link) => {
-      const matchesType =
-        relationshipType === 'All' ||
-        link.type === relationshipType
+    graph?.links.filter(
+      (link) => {
+        const matchesRelationship =
+          relationshipType === 'All' ||
+          link.type === relationshipType
 
-      return (
-        matchesType &&
-        visibleIds.has(link.source) &&
-        visibleIds.has(link.target)
-      )
-    }) || []
+        return (
+          matchesRelationship &&
+          visibleIds.has(link.source) &&
+          visibleIds.has(link.target)
+        )
+      },
+    ) || []
 
 
-  /* =========================================
-     TOP ENTITIES
-  ========================================= */
+  /* =======================================================
+     INSIGHTS
+  ======================================================= */
 
-  const topEntities = [...filteredNodes]
-    .sort((a, b) => b.degree - a.degree)
+  const topEntities = [
+    ...filteredNodes,
+  ]
+    .sort(
+      (a, b) =>
+        b.degree - a.degree,
+    )
     .slice(0, 6)
 
-  const mostConnectedEntity = topEntities[0]
+  const mostConnectedEntity =
+    topEntities[0]
 
+  const relationshipCounts =
+    useMemo(() => {
+      const counts: Record<string, number> = {}
 
-  /* =========================================
-     INSIGHTS
-  ========================================= */
+      filteredLinks.forEach(
+        (link) => {
+          counts[link.type] =
+            (counts[link.type] || 0) + 1
+        },
+      )
 
-  const relationshipCounts = useMemo(() => {
-    const counts: Record<string, number> = {}
-
-    filteredLinks.forEach((link) => {
-      counts[link.type] =
-        (counts[link.type] || 0) + 1
-    })
-
-    return counts
-  }, [filteredLinks])
+      return counts
+    }, [filteredLinks])
 
   const mostCommonRelationship =
-    Object.entries(relationshipCounts).sort(
+    Object.entries(
+      relationshipCounts,
+    ).sort(
       (a, b) => b[1] - a[1],
     )[0]
 
-  const keyLocation = [...filteredNodes]
-    .filter(
-      (node) =>
-        node.type.toLowerCase() === 'location',
+  const keyLocation =
+    [...filteredNodes]
+      .filter(
+        (node) =>
+          node.type.toLowerCase() ===
+          'location',
+      )
+      .sort(
+        (a, b) =>
+          b.degree - a.degree,
+      )[0]
+
+  const activityValue =
+    filteredLinks.length
+
+
+  /* =======================================================
+     ACTIVE VERSION
+  ======================================================= */
+
+  const activeVersion =
+    graphVersions.find(
+      (version) =>
+        version.version_number ===
+        selectedVersion,
     )
-    .sort((a, b) => b.degree - a.degree)[0]
 
-  const activityValue = filteredLinks.length
+  const lastUpdated =
+    activeVersion?.created_at ||
+    caseInfo?.created_at
 
 
-  /* =========================================
-     FILTER HANDLERS
-  ========================================= */
+  /* =======================================================
+     HANDLERS
+  ======================================================= */
 
   const handleEntityTypeChange = (
     event: ChangeEvent<HTMLSelectElement>,
@@ -256,44 +453,83 @@ export default function Dashboard() {
     setEntityType(event.target.value)
   }
 
-  const handleRelationshipTypeChange = (
-    event: ChangeEvent<HTMLSelectElement>,
-  ) => {
-    setRelationshipType(event.target.value)
+  const handleRelationshipTypeChange =
+    (
+      event: ChangeEvent<HTMLSelectElement>,
+    ) => {
+      setRelationshipType(event.target.value)
+    }
+
+
+  /* =======================================================
+     LOADING
+  ======================================================= */
+
+  if (loading) {
+    return (
+      <div className="dashboard dashboard-state">
+        <div className="dashboard-state-card">
+          <div className="dashboard-spinner" />
+
+          <strong>
+            Loading investigation...
+          </strong>
+
+          <span>
+            Preparing the evidence network.
+          </span>
+        </div>
+      </div>
+    )
   }
 
 
-  /* =========================================
-     CASE ID
-  ========================================= */
+  /* =======================================================
+     ERROR
+  ======================================================= */
 
-  const displayCaseId =
-    caseId ||
-    caseInfo?.id ||
-    'IIS-2026-001'
+  if (error && !graph) {
+    return (
+      <div className="dashboard dashboard-state">
+        <div className="dashboard-state-card error">
+          <strong>
+            Unable to load investigation
+          </strong>
+
+          <span>{error}</span>
+        </div>
+      </div>
+    )
+  }
 
 
-  /* =========================================
+  /* =======================================================
      RENDER
-  ========================================= */
+  ======================================================= */
 
   return (
     <div className="dashboard">
 
-      {/* =====================================
+      {/* =================================================
           HEADER
-      ===================================== */}
+      ================================================= */}
 
       <header className="dashboard-header">
 
         <div className="dashboard-header-left">
 
           <div className="dashboard-breadcrumb">
-            <span>Case Workspace</span>
+            <span>
+              Case Workspace
+            </span>
+
             <span className="breadcrumb-separator">
               /
             </span>
-            <strong>Dashboard</strong>
+
+            <strong>
+              Dashboard
+            </strong>
           </div>
 
           <h1>
@@ -301,23 +537,25 @@ export default function Dashboard() {
           </h1>
 
           <p>
-            Explore the entities and evidence-backed
-            relationships selected from the data
-            ingested into IIS.
+            Explore the entities and
+            evidence-backed relationships
+            selected from the data ingested
+            into IIS.
           </p>
 
         </div>
-
 
         <div className="dashboard-updated">
 
           <Icon type="calendar" />
 
           <div>
-            <span>Last updated</span>
+            <span>
+              Last updated
+            </span>
 
             <strong>
-              09 Sep 2026, 10:24 AM
+              {formatDate(lastUpdated)}
             </strong>
           </div>
 
@@ -326,60 +564,51 @@ export default function Dashboard() {
       </header>
 
 
-      {/* =====================================
+      {/* =================================================
           METRICS
-      ===================================== */}
+      ================================================= */}
 
       <section className="dashboard-metrics">
 
-        <div className="metric-item">
-
+        <div className="metric-item metric-entities">
           <Icon type="entities" />
 
           <div>
             <strong>
-              {activeGraph?.nodes.length ?? 0}
+              {graph?.nodes.length ?? 0}
             </strong>
 
             <span>
               Entities
             </span>
           </div>
-
         </div>
-
 
         <div className="metric-divider" />
 
-
-        <div className="metric-item">
-
+        <div className="metric-item metric-relationships">
           <Icon type="relationships" />
 
           <div>
             <strong>
-              {activeGraph?.relationships.length ?? 0}
+              {graph?.relationships.length ?? 0}
             </strong>
 
             <span>
               Relationships
             </span>
           </div>
-
         </div>
-
 
         <div className="metric-divider" />
 
-
-        <div className="metric-item">
-
+        <div className="metric-item metric-records">
           <Icon type="records" />
 
           <div>
             <strong>
               {
-                activeGraph?.nodes.filter(
+                graph?.nodes.filter(
                   (node) =>
                     node.type === 'Case',
                 ).length || 0
@@ -390,526 +619,630 @@ export default function Dashboard() {
               Case Records
             </span>
           </div>
-
         </div>
 
       </section>
 
 
-      {/* =====================================
+      {/* =================================================
           MAIN ANALYSIS
-      ===================================== */}
+      ================================================= */}
 
       <section className="dashboard-analysis">
 
+        <div className="dashboard-primary-grid">
 
-        {/* ===================================
-            NETWORK CARD
-        =================================== */}
+          {/* =============================================
+              NETWORK
+          ============================================= */}
 
-        <div className="network-card">
+          <div className="network-card">
 
+            <div className="network-card-header">
 
-          {/* NETWORK HEADER */}
+              <div className="network-title">
 
-          <div className="network-card-header">
+                <div className="network-title-icon">
+                  <Icon type="relationships" />
+                </div>
 
-            <div className="network-title">
+                <div>
 
-              <div className="network-title-icon">
-                <Icon type="relationships" />
-              </div>
+                  <h2>
+                    Evidence Network
+                  </h2>
 
-              <div>
+                  <p>
+                    {activeVersion
+                      ? `Saved snapshot · Version ${activeVersion.version_number}`
+                      : 'Current investigation network'}
+                  </p>
 
-                <h2>
-                  Evidence Network
-                </h2>
-
-                {activeVersion && (
-                  <div className="active-version-label mono">
-
-                    {activeVersion.label}
-
-                    <span>·</span>
-
-                    {activeVersion.trigger}
-
-                  </div>
-                )}
+                </div>
 
               </div>
 
-            </div>
 
+              <div className="graph-version-selector">
 
-            {/* GRAPH VERSION SELECTOR */}
-
-            <div className="graph-version-selector">
-
-              <span className="version-selector-label">
-                Graph version
-              </span>
-
-              <div className="version-buttons">
-
-                {graphVersions.map(
-                  (version) => (
-                    <button
-                      key={version.id}
-                      type="button"
-                      className={
-                        selectedVersion ===
-                        version.id
-                          ? 'version-button active'
-                          : 'version-button'
-                      }
-                      onClick={() =>
-                        setSelectedVersion(
-                          version.id,
-                        )
-                      }
-                    >
-                      {version.id}
-                    </button>
-                  ),
-                )}
-
-              </div>
-
-            </div>
-
-          </div>
-
-
-          {/* VERSION INFORMATION */}
-
-          {activeVersion && (
-            <div className="graph-version-info">
-
-              <div>
-
-                <span className="version-info-label">
-                  SNAPSHOT
+                <span className="version-selector-label">
+                  Graph version
                 </span>
 
-                <strong className="mono">
-                  {activeVersion.label}
-                </strong>
+                <div className="version-buttons">
 
-              </div>
+                  {graphVersions.length === 0 ? (
+                    <span className="no-version-label">
+                      No saved versions
+                    </span>
+                  ) : (
+                    graphVersions.map(
+                      (version) => (
+                        <button
+                          key={
+                            version.version_number
+                          }
+                          type="button"
+                          disabled={
+                            versionLoading
+                          }
+                          className={
+                            selectedVersion ===
+                            version.version_number
+                              ? 'version-button active'
+                              : 'version-button'
+                          }
+                          onClick={() =>
+                            handleVersionChange(
+                              version.version_number,
+                            )
+                          }
+                        >
+                          {
+                            version.version_number
+                          }
+                        </button>
+                      ),
+                    )
+                  )}
 
-
-              <div>
-
-                <span className="version-info-label">
-                  CREATED
-                </span>
-
-                <strong className="mono">
-                  {activeVersion.date}
-                  {' · '}
-                  {activeVersion.time}
-                </strong>
-
-              </div>
-
-
-              <div>
-
-                <span className="version-info-label">
-                  TRIGGER
-                </span>
-
-                <strong>
-                  {activeVersion.trigger}
-                </strong>
-
-              </div>
-
-
-              <div>
-
-                <span className="version-info-label">
-                  SOURCE
-                </span>
-
-                <strong>
-                  {activeVersion.source}
-                </strong>
+                </div>
 
               </div>
 
             </div>
-          )}
 
 
-          {/* =================================
-              GRAPH
-          ================================= */}
-
-          <div className="network-graph-wrapper">
-
-            <NetworkGraph
-              nodes={filteredNodes}
-              links={filteredLinks}
-              height={370}
-            />
-
-          </div>
-
-
-          {/* =================================
-              GRAPH FILTERS
-          ================================= */}
-
-          <div className="network-controls">
-
-            <div className="network-filter">
-
-              <label htmlFor="entity-type">
-                Entity
-              </label>
-
-              <select
-                id="entity-type"
-                value={entityType}
-                onChange={
-                  handleEntityTypeChange
-                }
-              >
-                <option value="All">
-                  All
-                </option>
-
-                {entityTypes.map(
-                  (type) => (
-                    <option
-                      key={type}
-                      value={type}
-                    >
-                      {type}
-                    </option>
-                  ),
-                )}
-
-              </select>
-
-            </div>
-
-
-            <div className="network-filter">
-
-              <label htmlFor="relationship-type">
-                Relationship
-              </label>
-
-              <select
-                id="relationship-type"
-                value={relationshipType}
-                onChange={
-                  handleRelationshipTypeChange
-                }
-              >
-                <option value="All">
-                  All
-                </option>
-
-                {relationshipTypes.map(
-                  (type) => (
-                    <option
-                      key={type}
-                      value={type}
-                    >
-                      {type}
-                    </option>
-                  ),
-                )}
-
-              </select>
-
-            </div>
-
-          </div>
-
-        </div>
-
-
-        {/* ===================================
-            NETWORK INSIGHTS
-        =================================== */}
-
-        <aside className="insights-card">
-
-          <div className="insights-header">
-
-            <div className="insights-icon">
-              <span>▥</span>
-            </div>
-
-            <h2>
-              Network Insights
-            </h2>
-
-          </div>
-
-
-          <div className="insight-list">
-
-
-            {/* MOST CONNECTED */}
-
-            <div className="insight-item">
-
-              <div className="insight-item-icon">
-                <Icon type="person" />
+            {error && (
+              <div className="dashboard-inline-error">
+                {error}
               </div>
+            )}
 
-              <div className="insight-content">
 
-                <span>
-                  Most Connected Entity
-                </span>
+            <div className="network-graph-wrapper">
 
-                <strong>
-                  {
-                    mostConnectedEntity?.label ||
-                    'No data'
+              {versionLoading ? (
+                <div className="network-loading">
+                  <div className="dashboard-spinner" />
+
+                  <span>
+                    Loading saved graph...
+                  </span>
+                </div>
+              ) : (
+                <NetworkGraph
+                  nodes={filteredNodes}
+                  links={filteredLinks}
+                  height={420}
+                />
+              )}
+
+            </div>
+
+
+            <div className="network-controls">
+
+              <div className="network-filter">
+
+                <label htmlFor="entity-type">
+                  Entity
+                </label>
+
+                <select
+                  id="entity-type"
+                  value={entityType}
+                  onChange={
+                    handleEntityTypeChange
                   }
-                </strong>
-
-                <small>
-                  {
-                    mostConnectedEntity?.degree ||
-                    0
-                  }{' '}
-                  connections
-                </small>
-
-              </div>
-
-            </div>
-
-
-            {/* COMMON RELATIONSHIP */}
-
-            <div className="insight-item">
-
-              <div className="insight-item-icon">
-                <Icon type="link" />
-              </div>
-
-              <div className="insight-content">
-
-                <span>
-                  Most Common Relationship
-                </span>
-
-                <strong>
-                  {
-                    mostCommonRelationship?.[0] ||
-                    'No data'
-                  }
-                </strong>
-
-                <small>
-                  {
-                    mostCommonRelationship?.[1] ||
-                    0
-                  }{' '}
-                  instances
-                </small>
-
-              </div>
-
-            </div>
-
-
-            {/* KEY LOCATION */}
-
-            <div className="insight-item">
-
-              <div className="insight-item-icon">
-                <Icon type="location" />
-              </div>
-
-              <div className="insight-content">
-
-                <span>
-                  Key Location
-                </span>
-
-                <strong>
-                  {
-                    keyLocation?.label ||
-                    'No location'
-                  }
-                </strong>
-
-                <small>
-                  {
-                    keyLocation?.degree ||
-                    0
-                  }{' '}
-                  connections
-                </small>
-
-              </div>
-
-            </div>
-
-
-            {/* ACTIVITY */}
-
-            <div className="insight-item">
-
-              <div className="insight-item-icon">
-                <Icon type="calendar" />
-              </div>
-
-              <div className="insight-content">
-
-                <span>
-                  Network Activity
-                </span>
-
-                <strong>
-                  {
-                    activeVersion?.label ||
-                    'Current Analysis'
-                  }
-                </strong>
-
-                <small>
-                  {activityValue}{' '}
-                  relationships analyzed
-                </small>
-
-              </div>
-
-            </div>
-
-          </div>
-
-        </aside>
-
-      </section>
-
-
-      {/* =====================================
-          CONNECTED ENTITIES
-      ===================================== */}
-
-      <section className="connected-section">
-
-        <div className="connected-header">
-
-          <div className="connected-title">
-
-            <div className="connected-icon">
-              <Icon type="relationships" />
-            </div>
-
-            <h2>
-              Most Connected Entities
-            </h2>
-
-          </div>
-
-
-          <Link
-            to={`/cases/${displayCaseId}/entities`}
-            className="view-all"
-          >
-            View all entities →
-          </Link>
-
-        </div>
-
-
-        <div className="entity-grid">
-
-          {topEntities.map(
-            (entity) => {
-
-              const entityPath =
-                `/cases/${displayCaseId}/entities/${entity.entity_id}`
-
-              const normalizedType =
-                entity.type.toLowerCase()
-
-              return (
-                <Link
-                  to={entityPath}
-                  key={entity.entity_id}
-                  className="entity-card"
                 >
+                  <option value="All">
+                    All
+                  </option>
 
-                  <div className="entity-card-top">
+                  {entityTypes.map(
+                    (type) => (
+                      <option
+                        key={type}
+                        value={type}
+                      >
+                        {type}
+                      </option>
+                    ),
+                  )}
 
-                    <div
-                      className={`entity-type-icon ${normalizedType}`}
-                    >
+                </select>
 
-                      <Icon
-                        type={
-                          normalizedType ===
-                          'location'
-                            ? 'location'
-                            : normalizedType ===
-                              'vehicle'
-                              ? 'records'
-                              : 'person'
-                        }
-                      />
-
-                    </div>
+              </div>
 
 
-                    <div className="entity-card-name">
-                      {entity.label}
-                    </div>
+              <div className="network-filter">
 
-                  </div>
+                <label htmlFor="relationship-type">
+                  Relationship
+                </label>
+
+                <select
+                  id="relationship-type"
+                  value={
+                    relationshipType
+                  }
+                  onChange={
+                    handleRelationshipTypeChange
+                  }
+                >
+                  <option value="All">
+                    All
+                  </option>
+
+                  {relationshipTypes.map(
+                    (type) => (
+                      <option
+                        key={type}
+                        value={type}
+                      >
+                        {type}
+                      </option>
+                    ),
+                  )}
+
+                </select>
+
+              </div>
 
 
-                  <span className="entity-badge">
-                    {entity.type}
+              <div className="network-filter-summary">
+
+                <strong>
+                  {filteredNodes.length}
+                </strong>
+
+                <span>
+                  entities
+                </span>
+
+                <span className="summary-dot">
+                  ·
+                </span>
+
+                <strong>
+                  {filteredLinks.length}
+                </strong>
+
+                <span>
+                  relationships
+                </span>
+
+              </div>
+
+            </div>
+
+          </div>
+
+
+          {/* =============================================
+              FUTURE INVESTIGATOR ASSISTANT
+          ============================================= */}
+
+          <aside className="investigator-assistant">
+
+            <div className="assistant-header">
+
+              <div className="assistant-title">
+
+                <div className="assistant-icon">
+                  <Icon type="assistant" />
+                </div>
+
+                <div>
+                  <span>
+                    INVESTIGATOR ASSIST
                   </span>
 
+                  <h2>
+                    Ask IIS
+                  </h2>
+                </div>
 
-                  <div className="entity-connections">
-                    {entity.degree}{' '}
-                    connected records
-                  </div>
+              </div>
+
+              <span className="assistant-status">
+                Coming soon
+              </span>
+
+            </div>
 
 
-                  <div className="entity-id mono">
-                    {entity.entity_id}
-                  </div>
+            <div className="assistant-intro">
 
-                </Link>
-              )
-            },
-          )}
+              <p>
+                Ask questions about this
+                investigation and get answers
+                grounded in the case network,
+                evidence, and analysis.
+              </p>
+
+            </div>
+
+
+            <div className="assistant-preview">
+
+              <div className="assistant-preview-label">
+                Example
+              </div>
+
+              <div className="assistant-message">
+                Who are the key entities in
+                this investigation?
+              </div>
+
+              <div className="assistant-preview-answer">
+                The completed assistant will
+                analyse the current case and
+                return relevant entities,
+                relationships, evidence, and
+                investigation findings.
+              </div>
+
+            </div>
+
+
+            <div className="assistant-input-preview">
+
+              <input
+                type="text"
+                placeholder="Ask about this investigation..."
+                disabled
+                aria-label="Future investigator assistant input"
+              />
+
+              <button
+                type="button"
+                disabled
+              >
+                Ask IIS
+              </button>
+
+            </div>
+
+
+            <div className="assistant-suggestions">
+
+              <span>
+                Suggested questions
+              </span>
+
+              <button
+                type="button"
+                disabled
+              >
+                Who are the key entities?
+              </button>
+
+              <button
+                type="button"
+                disabled
+              >
+                What suspicious patterns exist?
+              </button>
+
+              <button
+                type="button"
+                disabled
+              >
+                How are two entities connected?
+              </button>
+
+              <button
+                type="button"
+                disabled
+              >
+                What evidence supports this entity?
+              </button>
+
+            </div>
+
+          </aside>
+
+        </div>
+
+
+        {/* =================================================
+            INSIGHTS
+        ================================================= */}
+
+        <div className="dashboard-insights">
+
+          <div className="insight-card">
+
+            <div className="insight-card-header">
+
+              <span>
+                KEY ENTITY
+              </span>
+
+              <Icon type="person" />
+
+            </div>
+
+            <strong>
+              {mostConnectedEntity?.label ||
+                'No data'}
+            </strong>
+
+            <p>
+              {mostConnectedEntity
+                ? `${mostConnectedEntity.degree} network connections`
+                : 'No connected entities found'}
+            </p>
+
+          </div>
+
+
+          <div className="insight-card">
+
+            <div className="insight-card-header">
+
+              <span>
+                DOMINANT RELATIONSHIP
+              </span>
+
+              <Icon type="link" />
+
+            </div>
+
+            <strong>
+              {mostCommonRelationship?.[0] ||
+                'No data'}
+            </strong>
+
+            <p>
+              {mostCommonRelationship
+                ? `${mostCommonRelationship[1]} observed connections`
+                : 'No relationships found'}
+            </p>
+
+          </div>
+
+
+          <div className="insight-card">
+
+            <div className="insight-card-header">
+
+              <span>
+                KEY LOCATION
+              </span>
+
+              <Icon type="location" />
+
+            </div>
+
+            <strong>
+              {keyLocation?.label ||
+                'No location'}
+            </strong>
+
+            <p>
+              {keyLocation
+                ? `${keyLocation.degree} network connections`
+                : 'No location entities found'}
+            </p>
+
+          </div>
+
+
+          <div className="insight-card">
+
+            <div className="insight-card-header">
+
+              <span>
+                NETWORK ACTIVITY
+              </span>
+
+              <Icon type="relationships" />
+
+            </div>
+
+            <strong>
+              {activityValue}
+            </strong>
+
+            <p>
+              Relationships in current view
+            </p>
+
+          </div>
+
+        </div>
+
+
+        {/* =================================================
+            BOTTOM
+        ================================================= */}
+
+        <div className="dashboard-bottom-grid">
+
+          {/* ---------------------------------------------
+              TOP ENTITIES
+          --------------------------------------------- */}
+
+          <div className="dashboard-panel">
+
+            <div className="dashboard-panel-header">
+
+              <div>
+                <h3>
+                  Most Connected Entities
+                </h3>
+
+                <p>
+                  Entities with the highest
+                  number of observed connections.
+                </p>
+              </div>
+
+            </div>
+
+
+            {topEntities.length === 0 ? (
+              <div className="dashboard-empty">
+                No entities available.
+              </div>
+            ) : (
+              <div className="top-entities-list">
+
+                {topEntities.map(
+                  (entity, index) => (
+                    <Link
+                      key={
+                        entity.entity_id
+                      }
+                      to={`/cases/${caseId}/entities/${encodeURIComponent(
+                        entity.entity_id,
+                      )}`}
+                      className="top-entity-row"
+                    >
+
+                      <span className="entity-rank">
+                        {String(
+                          index + 1,
+                        ).padStart(
+                          2,
+                          '0',
+                        )}
+                      </span>
+
+                      <div className="entity-row-main">
+
+                        <strong>
+                          {entity.label}
+                        </strong>
+
+                        <span>
+                          {entity.type}
+                        </span>
+
+                      </div>
+
+                      <div className="entity-degree">
+
+                        <strong>
+                          {entity.degree}
+                        </strong>
+
+                        <span>
+                          links
+                        </span>
+
+                      </div>
+
+                    </Link>
+                  ),
+                )}
+
+              </div>
+            )}
+
+          </div>
+
+
+          {/* ---------------------------------------------
+              CASE CONTEXT
+          --------------------------------------------- */}
+
+          <div className="dashboard-panel">
+
+            <div className="dashboard-panel-header">
+
+              <div>
+                <h3>
+                  Investigation Context
+                </h3>
+
+                <p>
+                  Current case and snapshot information.
+                </p>
+              </div>
+
+            </div>
+
+
+            <div className="context-list">
+
+              <div>
+                <span>
+                  Case
+                </span>
+
+                <strong>
+                  {caseInfo?.name ||
+                    'Investigation'}
+                </strong>
+              </div>
+
+              <div>
+                <span>
+                  Case ID
+                </span>
+
+                <strong className="mono">
+                  {caseInfo?.id ||
+                    caseId ||
+                    '—'}
+                </strong>
+              </div>
+
+              <div>
+                <span>
+                  Active snapshot
+                </span>
+
+                <strong>
+                  {activeVersion
+                    ? `Version ${activeVersion.version_number}`
+                    : 'Live graph'}
+                </strong>
+              </div>
+
+              <div>
+                <span>
+                  Snapshot date
+                </span>
+
+                <strong>
+                  {formatDate(
+                    activeVersion?.created_at,
+                  )}
+                </strong>
+              </div>
+
+            </div>
+
+          </div>
 
         </div>
 
       </section>
-
-
-      {/* =====================================
-          DISCLAIMER
-      ===================================== */}
-
-      <div className="dashboard-disclaimer">
-
-        The graph shows extracted and selected
-        relationships from ingested evidence. It is
-        a review aid and does not establish intent,
-        guilt, or criminal involvement.
-
-      </div>
 
     </div>
   )

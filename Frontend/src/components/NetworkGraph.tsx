@@ -1,8 +1,19 @@
-import { useEffect, useRef, useState } from 'react'
-import * as d3 from 'd3'
+import {
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from 'react'
 import { useNavigate } from 'react-router-dom'
-import type { GraphNode, GraphRelationship } from '../lib/dataClient'
+import * as d3 from 'd3'
+
+import type {
+  GraphNode,
+  GraphRelationship,
+} from '../lib/dataClient'
+
 import './NetworkGraph.css'
+
 
 interface NetworkGraphProps {
   nodes: GraphNode[]
@@ -10,278 +21,1463 @@ interface NetworkGraphProps {
   height?: number
 }
 
-interface SimulationNode extends GraphNode, d3.SimulationNodeDatum {
-  x?: number
-  y?: number
-  fx?: number | null
-  fy?: number | null
+
+interface LayoutNode extends GraphNode {
+  x: number
+  y: number
+  level: number
+  component: number
 }
 
-interface SimulationLink extends Omit<GraphRelationship, 'source' | 'target'> {
-  source: string | SimulationNode
-  target: string | SimulationNode
+
+interface LayoutLink extends GraphRelationship {
+  sourceNode: LayoutNode
+  targetNode: LayoutNode
+  important: boolean
 }
+
+
+interface Point {
+  x: number
+  y: number
+}
+
+
+type ViewMode =
+  | 'full'
+  | 'focus'
+
+
+/* =========================================================
+   ENTITY COLORS
+========================================================= */
 
 const TYPE_COLORS: Record<string, string> = {
-  Person: '#5f8b86',
-  Vehicle: '#c99a4d',
-  Location: '#8b9b68',
-  AccountReference: '#a77b9b',
-  Case: '#d9d3c1',
-  Evidence: '#b56f55',
-  Organization: '#6f8eb5',
+  Person: '#4f8cff',
+  Organization: '#9b6cff',
+  Location: '#35b99a',
+  Vehicle: '#f59e42',
+  Phone: '#e05d9f',
+  Account: '#7c8cf8',
+  AccountReference: '#7c8cf8',
+  Case: '#64748b',
+  Evidence: '#f05d5e',
 }
+
+
+/* =========================================================
+   HELPERS
+========================================================= */
+
+function getNodeTypeColor(
+  type: string,
+) {
+  return (
+    TYPE_COLORS[type] ||
+    '#7f8a96'
+  )
+}
+
+
+function nodeKey(
+  value: string | LayoutNode,
+) {
+  return typeof value === 'string'
+    ? value
+    : value.id
+}
+
+
+/* =========================================================
+   ADJACENCY
+========================================================= */
+
+function buildAdjacency(
+  nodes: GraphNode[],
+  links: GraphRelationship[],
+) {
+  const adjacency =
+    new Map<
+      string,
+      Set<string>
+    >()
+
+  nodes.forEach((node) => {
+    adjacency.set(
+      node.id,
+      new Set(),
+    )
+  })
+
+  links.forEach((link) => {
+    const source =
+      nodeKey(link.source)
+
+    const target =
+      nodeKey(link.target)
+
+    if (!adjacency.has(source)) {
+      adjacency.set(
+        source,
+        new Set(),
+      )
+    }
+
+    if (!adjacency.has(target)) {
+      adjacency.set(
+        target,
+        new Set(),
+      )
+    }
+
+    adjacency
+      .get(source)!
+      .add(target)
+
+    adjacency
+      .get(target)!
+      .add(source)
+  })
+
+  return adjacency
+}
+
+
+/* =========================================================
+   BFS
+========================================================= */
+
+function calculateLevels(
+  rootId: string,
+  adjacency: Map<
+    string,
+    Set<string>
+  >,
+  maxDepth?: number,
+) {
+  const levels =
+    new Map<string, number>()
+
+  const queue: string[] = [
+    rootId,
+  ]
+
+  levels.set(
+    rootId,
+    0,
+  )
+
+  while (queue.length) {
+
+    const current =
+      queue.shift()!
+
+    const currentLevel =
+      levels.get(current) || 0
+
+    if (
+      maxDepth !== undefined &&
+      currentLevel >= maxDepth
+    ) {
+      continue
+    }
+
+    const neighbors =
+      adjacency.get(
+        current,
+      ) ||
+      new Set<string>()
+
+
+    neighbors.forEach(
+      (neighbor) => {
+
+        if (
+          !levels.has(
+            neighbor,
+          )
+        ) {
+
+          levels.set(
+            neighbor,
+            currentLevel + 1,
+          )
+
+          queue.push(
+            neighbor,
+          )
+
+        }
+
+      },
+    )
+  }
+
+  return levels
+}
+
+
+/* =========================================================
+   COMPONENTS
+========================================================= */
+
+function calculateComponents(
+  nodes: GraphNode[],
+  adjacency: Map<
+    string,
+    Set<string>
+  >,
+) {
+  const visited =
+    new Set<string>()
+
+  const components:
+    string[][] = []
+
+
+  nodes.forEach((node) => {
+
+    if (
+      visited.has(
+        node.id,
+      )
+    ) {
+      return
+    }
+
+
+    const component:
+      string[] = []
+
+    const queue = [
+      node.id,
+    ]
+
+    visited.add(
+      node.id,
+    )
+
+
+    while (queue.length) {
+
+      const current =
+        queue.shift()!
+
+      component.push(
+        current,
+      )
+
+
+      const neighbors =
+        adjacency.get(
+          current,
+        ) ||
+        new Set<string>()
+
+
+      neighbors.forEach(
+        (neighbor) => {
+
+          if (
+            !visited.has(
+              neighbor,
+            )
+          ) {
+
+            visited.add(
+              neighbor,
+            )
+
+            queue.push(
+              neighbor,
+            )
+
+          }
+
+        },
+      )
+
+    }
+
+
+    components.push(
+      component,
+    )
+
+  })
+
+
+  return components
+}
+
+
+/* =========================================================
+   FIND DEFAULT KEY ENTITY
+========================================================= */
+
+function findDefaultRoot(
+  nodes: GraphNode[],
+  links: GraphRelationship[],
+) {
+  if (!nodes.length) {
+    return ''
+  }
+
+
+  const adjacency =
+    buildAdjacency(
+      nodes,
+      links,
+    )
+
+
+  const components =
+    calculateComponents(
+      nodes,
+      adjacency,
+    )
+
+
+  const largestComponent =
+    [...components].sort(
+      (a, b) =>
+        b.length -
+        a.length,
+    )[0] || []
+
+
+  const componentSet =
+    new Set(
+      largestComponent,
+    )
+
+
+  const root =
+    nodes
+      .filter((node) =>
+        componentSet.has(
+          node.id,
+        ),
+      )
+      .sort(
+        (a, b) => {
+
+          if (
+            b.degree !==
+            a.degree
+          ) {
+            return (
+              b.degree -
+              a.degree
+            )
+          }
+
+          return a.label.localeCompare(
+            b.label,
+          )
+
+        },
+      )[0] || nodes[0]
+
+
+  return root.id
+}
+
+
+/* =========================================================
+   CREATE LAYOUT
+========================================================= */
+
+function createInvestigatorLayout(
+  nodes: GraphNode[],
+  links: GraphRelationship[],
+  width: number,
+  height: number,
+  rootId: string,
+  focusMode: boolean,
+  depth: number,
+  rotationSeed: number,
+) {
+
+  if (!nodes.length) {
+
+    return {
+      nodes: [] as LayoutNode[],
+      links: [] as LayoutLink[],
+    }
+
+  }
+
+
+  const adjacency =
+    buildAdjacency(
+      nodes,
+      links,
+    )
+
+
+  const components =
+    calculateComponents(
+      nodes,
+      adjacency,
+    )
+
+
+  const actualRootId =
+    rootId ||
+    findDefaultRoot(
+      nodes,
+      links,
+    )
+
+
+  /*
+   * In Focus Mode:
+   *
+   * Only nodes within the selected
+   * number of hops are displayed.
+   */
+
+  const levels =
+    calculateLevels(
+      actualRootId,
+      adjacency,
+      focusMode
+        ? depth
+        : undefined,
+    )
+
+
+  let visibleNodes: GraphNode[]
+
+
+  if (focusMode) {
+
+    visibleNodes =
+      nodes.filter(
+        (node) =>
+          levels.has(
+            node.id,
+          ),
+      )
+
+  } else {
+
+    visibleNodes =
+      [...nodes]
+
+  }
+
+
+  const visibleIds =
+    new Set(
+      visibleNodes.map(
+        (node) =>
+          node.id,
+      ),
+    )
+
+
+  const visibleLinks =
+    links.filter(
+      (link) =>
+        visibleIds.has(
+          nodeKey(
+            link.source,
+          ),
+        ) &&
+        visibleIds.has(
+          nodeKey(
+            link.target,
+          ),
+        ),
+    )
+
+
+  const centerX =
+    width / 2
+
+  const centerY =
+    height / 2
+
+
+  const usableWidth =
+    Math.max(
+      width - 160,
+      420,
+    )
+
+
+  const usableHeight =
+    Math.max(
+      height - 130,
+      300,
+    )
+
+
+  const maxRadius =
+    Math.min(
+      usableWidth / 2,
+      usableHeight / 2,
+    )
+
+
+  const maxVisibleLevel =
+    Math.max(
+      ...Array.from(
+        levels.values(),
+      ),
+      1,
+    )
+
+
+  const ringGap =
+    Math.max(
+      90,
+      Math.min(
+        145,
+        maxRadius /
+          Math.max(
+            maxVisibleLevel,
+            2,
+          ),
+      ),
+    )
+
+
+  const rotation =
+    (rotationSeed % 12) *
+    (Math.PI / 6)
+
+
+  const positioned =
+    new Map<
+      string,
+      LayoutNode
+    >()
+
+
+  /* =======================================================
+     ROOT
+  ======================================================= */
+
+  const root =
+    nodes.find(
+      (node) =>
+        node.id ===
+        actualRootId,
+    )
+
+
+  if (root) {
+
+    positioned.set(
+      root.id,
+      {
+        ...root,
+        x: centerX,
+        y: centerY,
+        level: 0,
+        component:
+          components.findIndex(
+            (component) =>
+              component.includes(
+                root.id,
+              ),
+          ),
+      },
+    )
+
+  }
+
+
+  /* =======================================================
+     RINGS
+  ======================================================= */
+
+  const levelsToRender =
+    Array.from(
+      new Set(
+        visibleNodes
+          .filter(
+            (node) =>
+              node.id !==
+              actualRootId,
+          )
+          .map(
+            (node) =>
+              levels.get(
+                node.id,
+              ) ?? 1,
+          ),
+      ),
+    ).sort(
+      (a, b) =>
+        a - b,
+    )
+
+
+  levelsToRender.forEach(
+    (level) => {
+
+      const levelNodes =
+        visibleNodes
+          .filter(
+            (node) =>
+              node.id !==
+                actualRootId &&
+              (
+                levels.get(
+                  node.id,
+                ) ?? level
+              ) === level,
+          )
+          .sort(
+            (a, b) => {
+
+              if (
+                b.degree !==
+                a.degree
+              ) {
+                return (
+                  b.degree -
+                  a.degree
+                )
+              }
+
+              return a.label.localeCompare(
+                b.label,
+              )
+
+            },
+          )
+
+
+      if (!levelNodes.length) {
+        return
+      }
+
+
+      const radius =
+        Math.min(
+          ringGap * level,
+          maxRadius,
+        )
+
+
+      const angleStep =
+        (Math.PI * 2) /
+        Math.max(
+          levelNodes.length,
+          1,
+        )
+
+
+      levelNodes.forEach(
+        (
+          node,
+          index,
+        ) => {
+
+          const angle =
+            rotation -
+            Math.PI / 2 +
+            index *
+              angleStep
+
+
+          positioned.set(
+            node.id,
+            {
+              ...node,
+
+              x:
+                centerX +
+                Math.cos(
+                  angle,
+                ) *
+                  radius,
+
+              y:
+                centerY +
+                Math.sin(
+                  angle,
+                ) *
+                  radius,
+
+              level,
+
+              component:
+                components.findIndex(
+                  (
+                    component,
+                  ) =>
+                    component.includes(
+                      node.id,
+                    ),
+                ),
+            },
+          )
+
+        },
+      )
+
+    },
+  )
+
+
+  /* =======================================================
+     FULL NETWORK PERIPHERAL COMPONENTS
+  ======================================================= */
+
+  if (!focusMode) {
+
+    const rootComponentIndex =
+      components.findIndex(
+        (component) =>
+          component.includes(
+            actualRootId,
+          ),
+      )
+
+
+    const disconnected =
+      components.filter(
+        (_component, index) =>
+          index !==
+          rootComponentIndex,
+      )
+
+
+    disconnected.forEach(
+      (
+        component,
+        componentIndex,
+      ) => {
+
+        const angle =
+          rotation +
+          componentIndex *
+            (
+              (Math.PI * 2) /
+              Math.max(
+                disconnected.length,
+                1,
+              )
+            )
+
+
+        const radius =
+          maxRadius *
+          0.9
+
+
+        const clusterX =
+          centerX +
+          Math.cos(angle) *
+            radius
+
+
+        const clusterY =
+          centerY +
+          Math.sin(angle) *
+            radius
+
+
+        const clusterNodes =
+          nodes.filter(
+            (node) =>
+              component.includes(
+                node.id,
+              ),
+          )
+
+
+        const localRadius =
+          Math.min(
+            42 +
+              clusterNodes.length *
+                8,
+            85,
+          )
+
+
+        clusterNodes.forEach(
+          (
+            node,
+            index,
+          ) => {
+
+            const localAngle =
+              rotation +
+              index *
+                (
+                  (Math.PI * 2) /
+                  Math.max(
+                    clusterNodes.length,
+                    1,
+                  )
+                )
+
+
+            positioned.set(
+              node.id,
+              {
+                ...node,
+
+                x:
+                  clusterX +
+                  Math.cos(
+                    localAngle,
+                  ) *
+                    localRadius,
+
+                y:
+                  clusterY +
+                  Math.sin(
+                    localAngle,
+                  ) *
+                    localRadius,
+
+                level:
+                  maxVisibleLevel +
+                  1,
+
+                component:
+                  componentIndex,
+              },
+            )
+
+          },
+        )
+
+      },
+    )
+
+  }
+
+
+  /* =======================================================
+     SAFETY FALLBACK
+  ======================================================= */
+
+  visibleNodes.forEach(
+    (node) => {
+
+      if (
+        !positioned.has(
+          node.id,
+        )
+      ) {
+
+        positioned.set(
+          node.id,
+          {
+            ...node,
+
+            x:
+              centerX,
+
+            y:
+              centerY,
+
+            level:
+              maxVisibleLevel +
+              1,
+
+            component: 0,
+          },
+        )
+
+      }
+
+    },
+  )
+
+
+  const layoutNodes =
+    Array.from(
+      positioned.values(),
+    )
+
+
+  const layoutLinks =
+    visibleLinks.map(
+      (link) => {
+
+        const source =
+          positioned.get(
+            nodeKey(
+              link.source,
+            ),
+          )!
+
+        const target =
+          positioned.get(
+            nodeKey(
+              link.target,
+            ),
+          )!
+
+
+        return {
+          ...link,
+
+          sourceNode:
+            source,
+
+          targetNode:
+            target,
+
+          important:
+            source.id ===
+              actualRootId ||
+            target.id ===
+              actualRootId ||
+            source.level <= 1 ||
+            target.level <= 1,
+        }
+
+      },
+    )
+
+
+  return {
+    nodes:
+      layoutNodes,
+
+    links:
+      layoutLinks,
+  }
+}
+
+
+/* =========================================================
+   COMPONENT
+========================================================= */
 
 export default function NetworkGraph({
   nodes,
   links,
-  height = 460,
+  height = 420,
 }: NetworkGraphProps) {
-  const svgRef = useRef<SVGSVGElement | null>(null)
-  const containerRef = useRef<HTMLDivElement | null>(null)
 
-  const navigate = useNavigate()
+  const svgRef =
+    useRef<SVGSVGElement | null>(
+      null,
+    )
 
-  const [hoveredNode, setHoveredNode] =
-    useState<GraphNode | null>(null)
+  const containerRef =
+    useRef<HTMLDivElement | null>(
+      null,
+    )
 
-  const [width, setWidth] = useState(800)
 
-  const [isFullscreen, setIsFullscreen] =
+  const navigate =
+    useNavigate()
+
+
+  const [
+    width,
+    setWidth,
+  ] =
+    useState(900)
+
+
+  const [
+    hoveredNode,
+    setHoveredNode,
+  ] =
+    useState<GraphNode | null>(
+      null,
+    )
+
+
+  const [
+    selectedNodeId,
+    setSelectedNodeId,
+  ] =
+    useState<string | null>(
+      null,
+    )
+
+
+  const [
+    focusNodeId,
+    setFocusNodeId,
+  ] =
+    useState<string | null>(
+      null,
+    )
+
+
+  const [
+    viewMode,
+    setViewMode,
+  ] =
+    useState<ViewMode>(
+      'full',
+    )
+
+
+  const [
+    depth,
+    setDepth,
+  ] =
+    useState<1 | 2 | 3>(
+      1,
+    )
+
+
+  const [
+    rotationSeed,
+    setRotationSeed,
+  ] =
+    useState(0)
+
+
+  const [
+    isFullscreen,
+    setIsFullscreen,
+  ] =
     useState(false)
 
-  const [fullscreenSize, setFullscreenSize] =
+
+  const [
+    fullscreenSize,
+    setFullscreenSize,
+  ] =
     useState({
-      width: window.innerWidth,
-      height: window.innerHeight,
+      width:
+        window.innerWidth,
+      height:
+        window.innerHeight,
     })
 
-  /* =========================================
-     OBSERVE GRAPH WIDTH
-  ========================================= */
+
+  /* =======================================================
+     DEFAULT ROOT
+  ======================================================= */
+
+  const defaultRootId =
+    useMemo(
+      () =>
+        findDefaultRoot(
+          nodes,
+          links,
+        ),
+      [
+        nodes,
+        links,
+      ],
+    )
+
+
+  /*
+   * If the selected/focused entity disappears
+   * after a case/filter update, recover safely.
+   */
 
   useEffect(() => {
-    const container = containerRef.current
 
-    if (!container) return
+    if (
+      focusNodeId &&
+      !nodes.some(
+        (node) =>
+          node.id ===
+          focusNodeId,
+      )
+    ) {
 
-    const observer = new ResizeObserver((entries) => {
-      const entry = entries[0]
-
-      if (!entry) return
-
-      const nextWidth = Math.max(
-        Math.round(entry.contentRect.width),
-        300,
+      setFocusNodeId(
+        null,
       )
 
-      setWidth(nextWidth)
+      setViewMode(
+        'full',
+      )
 
-      /*
-       * When fullscreen, also capture the actual
-       * graph height.
-       */
-      if (
-        document.fullscreenElement === container
-      ) {
-        setFullscreenSize({
-          width: window.innerWidth,
-          height: window.innerHeight,
-        })
-      }
-    })
+    }
 
-    observer.observe(container)
+  }, [
+    nodes,
+    focusNodeId,
+  ])
+
+
+  /* =======================================================
+     CURRENT FOCUS
+  ======================================================= */
+
+  const activeFocusId =
+    focusNodeId ||
+    defaultRootId
+
+
+  const activeFocusNode =
+    nodes.find(
+      (node) =>
+        node.id ===
+        activeFocusId,
+    ) || null
+
+
+  /* =======================================================
+     RESIZE
+  ======================================================= */
+
+  useEffect(() => {
+
+    const container =
+      containerRef.current
+
+    if (!container) {
+      return
+    }
+
+
+    const observer =
+      new ResizeObserver(
+        (entries) => {
+
+          const entry =
+            entries[0]
+
+          if (!entry) {
+            return
+          }
+
+
+          setWidth(
+            Math.max(
+              entry.contentRect.width,
+              320,
+            ),
+          )
+
+        },
+      )
+
+
+    observer.observe(
+      container,
+    )
+
 
     return () => {
       observer.disconnect()
     }
+
   }, [])
 
-  /* =========================================
-     FULLSCREEN STATE
-  ========================================= */
+
+  /* =======================================================
+     FULLSCREEN
+  ======================================================= */
 
   useEffect(() => {
-    const handleFullscreenChange = () => {
-      const fullscreen =
-        document.fullscreenElement ===
-        containerRef.current
 
-      setIsFullscreen(fullscreen)
+    const handler =
+      () => {
 
-      if (fullscreen) {
-        requestAnimationFrame(() => {
+        const active =
+          document.fullscreenElement ===
+          containerRef.current
+
+
+        setIsFullscreen(
+          active,
+        )
+
+
+        if (active) {
+
           setFullscreenSize({
-            width: window.innerWidth,
-            height: window.innerHeight,
+            width:
+              window.innerWidth,
+            height:
+              window.innerHeight,
           })
-        })
+
+        }
+
       }
-    }
+
 
     document.addEventListener(
       'fullscreenchange',
-      handleFullscreenChange,
+      handler,
     )
 
+
     return () => {
+
       document.removeEventListener(
         'fullscreenchange',
-        handleFullscreenChange,
+        handler,
       )
+
     }
+
   }, [])
 
-  /* =========================================
-     FULLSCREEN WINDOW RESIZE
-  ========================================= */
 
   useEffect(() => {
-    if (!isFullscreen) return
 
-    const handleResize = () => {
-      setFullscreenSize({
-        width: window.innerWidth,
-        height: window.innerHeight,
-      })
+    if (!isFullscreen) {
+      return
     }
+
+
+    const resize =
+      () => {
+
+        setFullscreenSize({
+          width:
+            window.innerWidth,
+          height:
+            window.innerHeight,
+        })
+
+      }
+
 
     window.addEventListener(
       'resize',
-      handleResize,
+      resize,
     )
 
-    handleResize()
+
+    resize()
+
 
     return () => {
+
       window.removeEventListener(
         'resize',
-        handleResize,
+        resize,
       )
+
     }
-  }, [isFullscreen])
 
-  /* =========================================
-     FULLSCREEN TOGGLE
-  ========================================= */
+  }, [
+    isFullscreen,
+  ])
 
-  const toggleFullscreen = async () => {
-    try {
-      if (document.fullscreenElement) {
-        await document.exitFullscreen()
+
+  const toggleFullscreen =
+    async () => {
+
+      try {
+
+        if (
+          document.fullscreenElement
+        ) {
+
+          await document.exitFullscreen()
+
+          return
+
+        }
+
+
+        if (
+          containerRef.current
+        ) {
+
+          await containerRef.current
+            .requestFullscreen()
+
+        }
+
+      } catch (error) {
+
+        console.error(
+          'Fullscreen error:',
+          error,
+        )
+
+      }
+
+    }
+
+
+  /* =======================================================
+     ENTER FOCUS
+  ======================================================= */
+
+  const enterFocusMode =
+    () => {
+
+      const target =
+        selectedNodeId ||
+        defaultRootId
+
+
+      if (!target) {
         return
       }
 
-      if (containerRef.current) {
-        await containerRef.current.requestFullscreen()
-      }
-    } catch (error) {
-      console.error(
-        'Unable to toggle fullscreen:',
-        error,
-      )
-    }
-  }
 
-  /* =========================================
+      setFocusNodeId(
+        target,
+      )
+
+      setViewMode(
+        'focus',
+      )
+
+      setDepth(
+        1,
+      )
+
+      setRotationSeed(
+        (value) =>
+          value + 1,
+      )
+
+    }
+
+
+  /* =======================================================
+     EXIT FOCUS
+  ======================================================= */
+
+  const exitFocusMode =
+    () => {
+
+      setViewMode(
+        'full',
+      )
+
+      setFocusNodeId(
+        null,
+      )
+
+      setRotationSeed(
+        (value) =>
+          value + 1,
+      )
+
+    }
+
+
+  /* =======================================================
+     CHANGE DEPTH
+  ======================================================= */
+
+  const changeDepth =
+    (
+      value: 1 | 2 | 3,
+    ) => {
+
+      setDepth(
+        value,
+      )
+
+      setRotationSeed(
+        (seed) =>
+          seed + 1,
+      )
+
+    }
+
+
+  /* =======================================================
+     LAYOUT
+  ======================================================= */
+
+  const layout =
+    useMemo(
+      () =>
+        createInvestigatorLayout(
+          nodes,
+          links,
+
+          isFullscreen
+            ? fullscreenSize.width
+            : width,
+
+          isFullscreen
+            ? fullscreenSize.height
+            : height,
+
+          activeFocusId,
+
+          viewMode ===
+            'focus',
+
+          depth,
+
+          rotationSeed,
+        ),
+
+      [
+        nodes,
+        links,
+        width,
+        height,
+        activeFocusId,
+        viewMode,
+        depth,
+        rotationSeed,
+        isFullscreen,
+        fullscreenSize.width,
+        fullscreenSize.height,
+      ],
+    )
+
+
+  /* =======================================================
      DRAW GRAPH
-  ========================================= */
+  ======================================================= */
 
   useEffect(() => {
+
     if (
-      !nodes.length ||
-      !svgRef.current
+      !svgRef.current ||
+      !layout.nodes.length
     ) {
       return
     }
 
-    /*
-     * NORMAL:
-     * Use Dashboard graph dimensions.
-     *
-     * FULLSCREEN:
-     * Use the actual browser viewport.
-     */
-    const graphWidth = isFullscreen
-      ? fullscreenSize.width
-      : width
 
-    const graphHeight = isFullscreen
-      ? fullscreenSize.height
-      : height
+    const graphWidth =
+      isFullscreen
+        ? fullscreenSize.width
+        : width
 
-    if (
-      graphWidth < 300 ||
-      graphHeight < 200
-    ) {
-      return
-    }
 
-    const svg = d3.select(svgRef.current)
+    const graphHeight =
+      isFullscreen
+        ? fullscreenSize.height
+        : height
 
-    svg.selectAll('*').remove()
+
+    const svg =
+      d3.select(
+        svgRef.current,
+      )
+
+
+    svg.selectAll('*')
+      .remove()
+
 
     svg
-      .attr('width', graphWidth)
-      .attr('height', graphHeight)
+      .attr(
+        'width',
+        graphWidth,
+      )
+      .attr(
+        'height',
+        graphHeight,
+      )
       .attr(
         'viewBox',
         `0 0 ${graphWidth} ${graphHeight}`,
       )
-      .attr(
-        'preserveAspectRatio',
-        'xMidYMid meet',
-      )
 
-    /* =======================================
-       COPY GRAPH DATA
-    ======================================= */
-
-    const nodeList: SimulationNode[] =
-      nodes.map((node) => ({
-        ...node,
-      }))
-
-    const linkList: SimulationLink[] =
-      links.map((link) => ({
-        ...link,
-      }))
-
-    /* =======================================
-       SCALES
-    ======================================= */
-
-    const maxDegree =
-      d3.max(
-        nodeList,
-        (node) => node.degree,
-      ) || 1
-
-    const radiusScale =
-      d3
-        .scaleSqrt()
-        .domain([0, maxDegree])
-        .range([7, 24])
-
-    const maxWeight =
-      d3.max(
-        linkList,
-        (link) => link.weight,
-      ) || 1
-
-    const widthScale =
-      d3
-        .scaleLinear()
-        .domain([
-          1,
-          Math.max(maxWeight, 1),
-        ])
-        .range([1, 3.5])
-
-    /* =======================================
-       GRAPH GROUP
-    ======================================= */
 
     const graphGroup =
       svg
@@ -291,9 +1487,6 @@ export default function NetworkGraph({
           'graph-group',
         )
 
-    /* =======================================
-       ZOOM + PAN
-    ======================================= */
 
     const zoom =
       d3
@@ -302,344 +1495,552 @@ export default function NetworkGraph({
           unknown
         >()
         .scaleExtent([
-          0.35,
+          0.4,
           4,
         ])
         .on(
           'zoom',
           (event) => {
+
             graphGroup.attr(
               'transform',
               event.transform,
             )
+
           },
         )
 
-    svg.call(zoom)
 
-    /* =======================================
+    svg.call(
+      zoom,
+    )
+
+
+    /* =====================================================
+       NODE SIZE
+    ===================================================== */
+
+    const maxDegree =
+      Math.max(
+        ...layout.nodes.map(
+          (node) =>
+            node.degree,
+        ),
+        1,
+      )
+
+
+    const radiusScale =
+      d3
+        .scaleSqrt()
+        .domain([
+          0,
+          maxDegree,
+        ])
+        .range([
+          7,
+          23,
+        ])
+
+
+    /* =====================================================
        EDGES
-    ======================================= */
+    ===================================================== */
 
-    const link =
+    const edgeGroup =
       graphGroup
         .append('g')
         .attr(
           'class',
           'graph-edges',
         )
+
+
+    const edgePaths =
+      edgeGroup
         .selectAll<
-          SVGLineElement,
-          SimulationLink
-        >('line')
-        .data(linkList)
-        .join('line')
+          SVGPathElement,
+          LayoutLink
+        >('path')
+        .data(
+          layout.links,
+        )
+        .join('path')
         .attr(
           'class',
-          'graph-edge',
+          (link) =>
+            link.important
+              ? 'graph-edge important'
+              : 'graph-edge secondary',
         )
         .attr(
           'stroke-width',
           (link) =>
-            widthScale(
-              link.weight,
-            ),
+            link.important
+              ? Math.min(
+                  2.4,
+                  1 +
+                    link.weight *
+                      0.25,
+                )
+              : 1,
+        )
+        .attr(
+          'fill',
+          'none',
         )
 
-    /* =======================================
-       NODES
-    ======================================= */
 
-    const node =
+    /* =====================================================
+       NODES
+    ===================================================== */
+
+    const nodeGroup =
       graphGroup
         .append('g')
         .attr(
           'class',
           'graph-nodes',
         )
+
+
+    const nodeGroups =
+      nodeGroup
         .selectAll<
-          SVGCircleElement,
-          SimulationNode
-        >('circle')
-        .data(nodeList)
-        .join('circle')
+          SVGGElement,
+          LayoutNode
+        >('g')
+        .data(
+          layout.nodes,
+        )
+        .join('g')
         .attr(
           'class',
-          'graph-node',
+          'graph-node-group',
         )
         .attr(
-          'r',
+          'transform',
           (node) =>
-            radiusScale(
-              node.degree,
-            ),
-        )
-        .attr(
-          'fill',
-          (node) =>
-            TYPE_COLORS[
-              node.type
-            ] ||
-            'var(--teal)',
-        )
-        .attr(
-          'fill-opacity',
-          0.88,
-        )
-        .attr(
-          'stroke',
-          'var(--paper-dim)',
-        )
-        .attr(
-          'stroke-width',
-          1,
+            `translate(${node.x}, ${node.y})`,
         )
         .style(
           'cursor',
           'pointer',
         )
 
-    /* =======================================
-       LABELS
-    ======================================= */
 
-    const label =
-      graphGroup
-        .append('g')
-        .attr(
-          'class',
-          'graph-labels',
-        )
-        .selectAll<
-          SVGTextElement,
-          SimulationNode
-        >('text')
-        .data(
-          nodeList.filter(
-            (node) =>
-              node.degree >=
-                maxDegree * 0.35 ||
-              node.type === 'Case',
+    /* =====================================================
+       NODE CIRCLES
+    ===================================================== */
+
+    nodeGroups
+      .append('circle')
+      .attr(
+        'class',
+        (node) =>
+          node.id ===
+          activeFocusId
+            ? 'graph-node root'
+            : 'graph-node',
+      )
+      .attr(
+        'r',
+        (node) =>
+          radiusScale(
+            node.degree,
           ),
-        )
-        .join('text')
-        .attr(
-          'class',
-          'graph-label',
-        )
-        .text(
-          (node) =>
-            node.label,
-        )
-        .attr(
-          'font-size',
-          10,
-        )
-        .attr(
-          'font-family',
-          'var(--font-mono)',
-        )
-        .attr(
-          'fill',
-          'var(--paper-dim)',
-        )
-        .style(
-          'pointer-events',
-          'none',
-        )
+      )
+      .attr(
+        'fill',
+        (node) =>
+          getNodeTypeColor(
+            node.type,
+          ),
+      )
+      .attr(
+        'fill-opacity',
+        0.9,
+      )
 
-    /* =======================================
-       FORCE SIMULATION
-       
-       IMPORTANT:
-       
-       We KEEP the floating D3 behavior.
-       
-       We are only reducing the "rubber band"
-       feeling by increasing velocity decay
-       and using a faster alpha decay.
-       
-       The simulation is NOT manually stopped.
-    ======================================= */
 
-    const simulation =
-  d3
-    .forceSimulation<SimulationNode>(
-      nodeList,
-    )
-    .randomSource(
-      d3.randomLcg(0.42),
-    )
-    .force(
-      'link',
-      d3
-        .forceLink<
-          SimulationNode,
-          SimulationLink
-        >(linkList)
-        .id(
-          (node) =>
-            node.id,
-        )
-        .distance(
-          isFullscreen
-            ? 145
-            : 85,
-        )
-        .strength(
-          0.18,
-        ),
-    )
-    .force(
-      'charge',
-      d3
-        .forceManyBody<
-          SimulationNode
-        >()
-        .strength(
-          isFullscreen
-            ? -280
-            : -160,
-        ),
-    )
-    .force(
-      'center',
-      d3.forceCenter(
-        graphWidth / 2,
-        graphHeight / 2,
-      ),
-    )
-    .force(
-      'collision',
-      d3
-        .forceCollide<
-          SimulationNode
-        >()
-        .radius(
-          (node) =>
+    /* =====================================================
+       ROOT HALO
+    ===================================================== */
+
+    nodeGroups
+      .filter(
+        (node) =>
+          node.id ===
+          activeFocusId,
+      )
+      .append('circle')
+      .attr(
+        'class',
+        'graph-root-halo',
+      )
+      .attr(
+        'r',
+        (node) =>
+          radiusScale(
+            node.degree,
+          ) + 7,
+      )
+
+
+    /* =====================================================
+       LABELS
+    ===================================================== */
+
+    nodeGroups
+      .filter(
+        (node) => {
+
+          return (
+            node.id ===
+              activeFocusId ||
+            node.id ===
+              selectedNodeId ||
+            node.level <= 1 ||
+            node.degree >=
+              maxDegree * 0.55
+          )
+
+        },
+      )
+      .append('text')
+      .attr(
+        'class',
+        'graph-label',
+      )
+      .attr(
+        'x',
+        (node) =>
+          radiusScale(
+            node.degree,
+          ) + 7,
+      )
+      .attr(
+        'y',
+        0,
+      )
+      .attr(
+        'dominant-baseline',
+        'middle',
+      )
+      .text(
+        (node) =>
+          node.label,
+      )
+
+
+    /* =====================================================
+       KEY ENTITY LABEL
+    ===================================================== */
+
+    nodeGroups
+      .filter(
+        (node) =>
+          node.id ===
+          activeFocusId,
+      )
+      .append('text')
+      .attr(
+        'class',
+        'graph-root-label',
+      )
+      .attr(
+        'x',
+        0,
+      )
+      .attr(
+        'y',
+        (node) =>
+          -(
             radiusScale(
               node.degree,
-            ) + 12,
-        ),
-    )
-    .velocityDecay(
-      0.88,
-    )
-    .alphaDecay(
-      0.08,
-    )
-    .alpha(
-      1,
-    )
+            ) + 13
+          ),
+      )
+      .attr(
+        'text-anchor',
+        'middle',
+      )
+      .text(
+        'FOCUS ENTITY',
+      )
 
-    /* =======================================
-       UPDATE GRAPH
-    ======================================= */
 
-    const updateGraph = () => {
-      link
-        .attr(
-          'x1',
-          (link) =>
-            (
-              link.source as SimulationNode
-            ).x || 0,
-        )
-        .attr(
-          'y1',
-          (link) =>
-            (
-              link.source as SimulationNode
-            ).y || 0,
-        )
-        .attr(
-          'x2',
-          (link) =>
-            (
-              link.target as SimulationNode
-            ).x || 0,
-        )
-        .attr(
-          'y2',
-          (link) =>
-            (
-              link.target as SimulationNode
-            ).y || 0,
-        )
+    /* =====================================================
+       EDGE CURVES
+    ===================================================== */
 
-      node
-        .attr(
-          'cx',
-          (node) =>
-            node.x || 0,
-        )
-        .attr(
-          'cy',
-          (node) =>
-            node.y || 0,
-        )
+    const drawEdges =
+      () => {
 
-      label
-        .attr(
-          'x',
-          (node) =>
-            (node.x || 0) +
-            radiusScale(
-              node.degree,
-            ) +
-            7,
-        )
-        .attr(
-          'y',
-          (node) =>
-            node.y || 0,
-        )
-    }
+        edgePaths.attr(
+          'd',
+          (link) => {
 
-    /* =======================================
-       SIMULATION
-    ======================================= */
+            const source =
+              link.sourceNode
 
-    simulation.on(
-      'tick',
-      updateGraph,
-    )
+            const target =
+              link.targetNode
 
-    /*
-     * Start the floating animation.
-     *
-     * D3 will naturally cool down as alpha
-     * decreases. We do NOT call stop().
-     */
-    simulation.restart()
 
-    /* =======================================
-       DRAG
-    ======================================= */
+            const sx =
+              source.x
 
-    node.call(
-      d3
-        .drag<
-          SVGCircleElement,
-          SimulationNode
-        >()
-        .on(
-          'start',
-          function (
-            event,
-            draggedNode,
-          ) {
-            if (!event.active) {
-              simulation.alphaTarget(
-                0.18,
-              ).restart()
+            const sy =
+              source.y
+
+            const tx =
+              target.x
+
+            const ty =
+              target.y
+
+
+            const dx =
+              tx - sx
+
+            const dy =
+              ty - sy
+
+
+            const distance =
+              Math.sqrt(
+                dx * dx +
+                  dy * dy,
+              )
+
+
+            if (
+              distance < 1
+            ) {
+
+              return `
+                M ${sx} ${sy}
+                L ${tx} ${ty}
+              `
+
             }
 
-            draggedNode.fx =
-              draggedNode.x
 
-            draggedNode.fy =
-              draggedNode.y
+            const curve =
+              Math.min(
+                38,
+                Math.max(
+                  10,
+                  distance *
+                    0.1,
+                ),
+              )
+
+
+            const nx =
+              -dy /
+              distance
+
+            const ny =
+              dx /
+              distance
+
+
+            const direction =
+              (
+                source.id.length +
+                target.id.length
+              ) % 2 === 0
+                ? 1
+                : -1
+
+
+            const cx =
+              (sx + tx) / 2 +
+              nx *
+                curve *
+                direction
+
+            const cy =
+              (sy + ty) / 2 +
+              ny *
+                curve *
+                direction
+
+
+            return `
+              M ${sx} ${sy}
+              Q ${cx} ${cy}
+                ${tx} ${ty}
+            `
+
+          },
+        )
+
+      }
+
+
+    drawEdges()
+
+
+    /* =====================================================
+       HOVER
+    ===================================================== */
+
+    nodeGroups
+      .on(
+        'mouseenter',
+        (_event, node) => {
+
+          setHoveredNode(
+            node,
+          )
+
+
+          const neighborIds =
+            new Set<string>([
+              node.id,
+            ])
+
+
+          layout.links.forEach(
+            (link) => {
+
+              if (
+                link.sourceNode.id ===
+                node.id
+              ) {
+
+                neighborIds.add(
+                  link.targetNode.id,
+                )
+
+              }
+
+
+              if (
+                link.targetNode.id ===
+                node.id
+              ) {
+
+                neighborIds.add(
+                  link.sourceNode.id,
+                )
+
+              }
+
+            },
+          )
+
+
+          nodeGroups
+            .classed(
+              'dimmed',
+              (candidate) =>
+                !neighborIds.has(
+                  candidate.id,
+                ),
+            )
+
+
+          edgePaths
+            .classed(
+              'highlighted',
+              (link) =>
+                link.sourceNode.id ===
+                  node.id ||
+                link.targetNode.id ===
+                  node.id,
+            )
+
+        },
+      )
+      .on(
+        'mouseleave',
+        () => {
+
+          setHoveredNode(
+            null,
+          )
+
+
+          nodeGroups
+            .classed(
+              'dimmed',
+              false,
+            )
+
+
+          edgePaths
+            .classed(
+              'highlighted',
+              false,
+            )
+
+        },
+      )
+
+
+    /* =====================================================
+       CLICK
+    ===================================================== */
+
+    nodeGroups.on(
+      'click',
+      (
+        event,
+        node,
+      ) => {
+
+        event.stopPropagation()
+
+        setSelectedNodeId(
+          node.id,
+        )
+
+      },
+    )
+
+
+    /* =====================================================
+       DOUBLE CLICK
+    ===================================================== */
+
+    nodeGroups.on(
+      'dblclick',
+      (
+        event,
+        node,
+      ) => {
+
+        event.stopPropagation()
+
+
+        navigate(
+          `../entities/${encodeURIComponent(
+            node.id,
+          )}`,
+        )
+
+      },
+    )
+
+
+    /* =====================================================
+       DRAG
+    ===================================================== */
+
+    nodeGroups.call(
+      d3
+        .drag<
+          SVGGElement,
+          LayoutNode
+        >()
+
+        .on(
+          'start',
+          function () {
 
             d3
               .select(this)
@@ -648,39 +2049,40 @@ export default function NetworkGraph({
                 'dragging',
                 true,
               )
+
           },
         )
+
         .on(
           'drag',
           function (
             event,
-            draggedNode,
+            node,
           ) {
-            draggedNode.fx =
+
+            node.x =
               event.x
 
-            draggedNode.fy =
+            node.y =
               event.y
 
-            updateGraph()
+
+            d3
+              .select(this)
+              .attr(
+                'transform',
+                `translate(${node.x}, ${node.y})`,
+              )
+
+
+            drawEdges()
+
           },
         )
+
         .on(
           'end',
-          function (
-            event,
-            draggedNode,
-          ) {
-            if (!event.active) {
-              simulation.alphaTarget(0)
-            }
-
-            /*
-             * Release the fixed position so the
-             * graph remains genuinely interactive.
-             */
-            draggedNode.fx = null
-            draggedNode.fy = null
+          function () {
 
             d3
               .select(this)
@@ -688,67 +2090,52 @@ export default function NetworkGraph({
                 'dragging',
                 false,
               )
+
           },
         ),
     )
 
-    /* =======================================
-       HOVER
-    ======================================= */
 
-    node
-      .on(
-        'mouseenter',
-        (_event, node) => {
-          setHoveredNode(node)
-        },
-      )
-      .on(
-        'mouseleave',
-        () => {
-          setHoveredNode(null)
-        },
-      )
+    /* =====================================================
+       EMPTY GRAPH CLICK
+    ===================================================== */
 
-    /* =======================================
-       CLICK
-    ======================================= */
-
-    node.on(
+    svg.on(
       'click',
-      (_event, node) => {
-        navigate(
-          `/entities/${node.id}`,
+      () => {
+
+        setSelectedNodeId(
+          null,
         )
+
       },
     )
 
-    /* =======================================
-       CLEANUP
-    ======================================= */
 
     return () => {
-      simulation.stop()
 
-      svg.on(
-        '.zoom',
-        null,
-      )
+      svg
+        .selectAll('*')
+        .remove()
+
     }
+
   }, [
-    nodes,
-    links,
+    layout,
     width,
     height,
     isFullscreen,
     fullscreenSize.width,
     fullscreenSize.height,
+    activeFocusId,
+    selectedNodeId,
     navigate,
   ])
 
-  /* =========================================
+
+  /* =======================================================
      RENDER
-  ========================================= */
+  ======================================================= */
 
   return (
     <div
@@ -760,11 +2147,129 @@ export default function NetworkGraph({
       }
     >
 
-      {/* =====================================
-          TOOLBAR
-      ===================================== */}
-
       <div className="graph-toolbar">
+
+        <div className="graph-network-summary">
+
+          <strong>
+            {layout.nodes.length}
+          </strong>
+
+          <span>
+            visible
+          </span>
+
+          <i>•</i>
+
+          <strong>
+            {nodes.length}
+          </strong>
+
+          <span>
+            total
+          </span>
+
+        </div>
+
+
+        {/* ===============================================
+            VIEW MODE
+        =============================================== */}
+
+        <div className="graph-view-switch">
+
+          <button
+            type="button"
+            className={
+              viewMode === 'full'
+                ? 'active'
+                : ''
+            }
+            onClick={
+              exitFocusMode
+            }
+          >
+            Full Network
+          </button>
+
+
+          <button
+            type="button"
+            className={
+              viewMode === 'focus'
+                ? 'active'
+                : ''
+            }
+            onClick={
+              enterFocusMode
+            }
+          >
+            Focus
+          </button>
+
+        </div>
+
+
+        {/* ===============================================
+            DEPTH
+        =============================================== */}
+
+        {viewMode ===
+          'focus' && (
+
+          <div className="graph-depth-control">
+
+            {[1, 2, 3].map(
+              (value) => (
+
+                <button
+                  key={value}
+                  type="button"
+                  className={
+                    depth === value
+                      ? 'active'
+                      : ''
+                  }
+                  onClick={() =>
+                    changeDepth(
+                      value as
+                        1 | 2 | 3,
+                    )
+                  }
+                >
+                  {value}
+                </button>
+
+              ),
+            )}
+
+          </div>
+
+        )}
+
+
+        {/* ===============================================
+            RE-LAYOUT
+        =============================================== */}
+
+        <button
+          type="button"
+          className="layout-control"
+          onClick={() =>
+            setRotationSeed(
+              (value) =>
+                value + 1,
+            )
+          }
+          title="Generate another clean network arrangement"
+        >
+          ↻ Re-layout
+        </button>
+
+
+        {/* ===============================================
+            FULLSCREEN
+        =============================================== */}
 
         <button
           type="button"
@@ -781,64 +2286,144 @@ export default function NetworkGraph({
       </div>
 
 
-      {/* =====================================
-          GRAPH
-      ===================================== */}
+      {/* =================================================
+          FOCUS STATUS
+      ================================================= */}
 
-      <svg
-        ref={svgRef}
-        width="100%"
-        height={height}
-        aria-label="Investigation network graph"
-      />
+      {viewMode ===
+        'focus' &&
+        activeFocusNode && (
 
+        <div className="graph-focus-banner">
 
-      {/* =====================================
-          TOOLTIP
-      ===================================== */}
+          <div>
 
-      {hoveredNode && (
-        <div className="graph-tooltip mono">
+            <span>
+              INVESTIGATING
+            </span>
 
-          <div className="tt-id">
-            {hoveredNode.label}
+            <strong>
+              {activeFocusNode.label}
+            </strong>
+
           </div>
 
-          <div className="tt-row">
-            Type: {hoveredNode.type}
+
+          <div className="graph-focus-depth">
+
+            <span>
+              DEPTH
+            </span>
+
+            <strong>
+              {depth}
+            </strong>
+
           </div>
 
-          <div className="tt-row">
-            Connections:{' '}
-            {hoveredNode.degree}
-          </div>
 
-          <div className="tt-id mono">
-            {hoveredNode.id}
-          </div>
+          <button
+            type="button"
+            onClick={
+              exitFocusMode
+            }
+          >
+            Clear Focus
+          </button>
 
         </div>
+
       )}
 
 
-      {/* =====================================
+      {/* =================================================
+          GRAPH
+      ================================================= */}
+
+      {layout.nodes.length ? (
+
+        <svg
+          ref={svgRef}
+          width="100%"
+          height={height}
+          aria-label="Investigation network graph"
+        />
+
+      ) : (
+
+        <div className="graph-empty">
+
+          No network data available.
+
+        </div>
+
+      )}
+
+
+      {/* =================================================
+          TOOLTIP
+      ================================================= */}
+
+      {hoveredNode && (
+
+        <div className="graph-tooltip">
+
+          <div className="graph-tooltip-type">
+            {hoveredNode.type}
+          </div>
+
+          <div className="graph-tooltip-name">
+            {hoveredNode.label}
+          </div>
+
+          <div className="graph-tooltip-row">
+
+            <span>
+              Connections
+            </span>
+
+            <strong>
+              {hoveredNode.degree}
+            </strong>
+
+          </div>
+
+          <div className="graph-tooltip-id mono">
+            {hoveredNode.id}
+          </div>
+
+          <div className="graph-tooltip-action">
+            Click to select · Focus to investigate · Double-click to inspect
+          </div>
+
+        </div>
+
+      )}
+
+
+      {/* =================================================
           LEGEND
-      ===================================== */}
+      ================================================= */}
 
       <div className="graph-legend">
 
         <span className="legend-item">
-          <i className="dot regular" />
-          Node color = entity type
+          <i className="dot entity" />
+          Entity
         </span>
 
         <span className="legend-item">
-          <i className="dot size" />
-          Node size = connections
+          <i className="dot key" />
+          Focus entity
+        </span>
+
+        <span className="legend-item">
+          <i className="dot connection" />
+          Direct connection
         </span>
 
         <span className="legend-hint">
-          Scroll to zoom · drag nodes · click to inspect
+          Click to select · drag to reposition · double-click to inspect · scroll to zoom
         </span>
 
       </div>

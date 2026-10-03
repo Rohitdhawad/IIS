@@ -1,485 +1,363 @@
 import { useEffect, useMemo, useState } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, useParams } from 'react-router-dom'
+
 import {
+  getCase,
   getVisualGraph,
+  type CaseInfo,
   type GraphNode,
-  type InvestigationGraph,
 } from '../lib/dataClient'
+
 import './Entities.css'
 
-type SortOption = 'connections' | 'name' | 'type'
+const ENTITY_TYPES = [
+  'All',
+  'Person',
+  'Organization',
+  'Phone',
+  'Vehicle',
+  'Location',
+]
+
+function normalizeType(type: string) {
+  return type.trim().toLowerCase()
+}
 
 function EntityIcon({ type }: { type: string }) {
-  const normalized = type.toLowerCase()
+  const normalized = normalizeType(type)
 
-  if (normalized.includes('location')) {
+  if (normalized === 'location') {
     return (
-      <svg
-        viewBox="0 0 24 24"
-        fill="none"
-        stroke="currentColor"
-        strokeWidth="1.6"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      >
+      <svg viewBox="0 0 24 24" aria-hidden="true">
         <path d="M12 21s7-6.1 7-12a7 7 0 1 0-14 0c0 5.9 7 12 7 12z" />
         <circle cx="12" cy="9" r="2.2" />
       </svg>
     )
   }
 
-  if (normalized.includes('vehicle')) {
+  if (normalized === 'phone') {
     return (
-      <svg
-        viewBox="0 0 24 24"
-        fill="none"
-        stroke="currentColor"
-        strokeWidth="1.6"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      >
-        <path d="M5 16l1.5-6h11L19 16" />
-        <path d="M4 16h16v4H4z" />
-        <circle cx="7.5" cy="20" r="1.3" />
-        <circle cx="16.5" cy="20" r="1.3" />
+      <svg viewBox="0 0 24 24" aria-hidden="true">
+        <rect x="7" y="2.5" width="10" height="19" rx="2" />
+        <path d="M10 5h4M11 18.5h2" />
       </svg>
     )
   }
 
-  if (normalized.includes('organization')) {
+  if (normalized === 'vehicle') {
     return (
-      <svg
-        viewBox="0 0 24 24"
-        fill="none"
-        stroke="currentColor"
-        strokeWidth="1.6"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      >
-        <rect x="5" y="4" width="14" height="17" rx="1" />
-        <path d="M9 8h6M9 12h6M9 16h6" />
+      <svg viewBox="0 0 24 24" aria-hidden="true">
+        <path d="M5 16l1.5-6h11L19 16" />
+        <path d="M4 16h16v3H4z" />
+        <circle cx="7" cy="19" r="1.5" />
+        <circle cx="17" cy="19" r="1.5" />
+      </svg>
+    )
+  }
+
+  if (normalized === 'organization') {
+    return (
+      <svg viewBox="0 0 24 24" aria-hidden="true">
+        <path d="M4 21V5h10v16" />
+        <path d="M14 9h6v12" />
+        <path d="M7 8h3M7 12h3M7 16h3M17 13h1M17 17h1" />
       </svg>
     )
   }
 
   return (
-    <svg
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="1.6"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-    >
-      <circle cx="12" cy="8" r="3" />
+    <svg viewBox="0 0 24 24" aria-hidden="true">
+      <circle cx="12" cy="8" r="3.2" />
       <path d="M5 21c0-4 2.8-6 7-6s7 2 7 6" />
     </svg>
   )
 }
 
-function getEntityClass(type: string) {
-  const normalized = type.toLowerCase()
-
-  if (normalized.includes('location')) return 'location'
-  if (normalized.includes('vehicle')) return 'vehicle'
-  if (normalized.includes('organization')) return 'organization'
-
-  return 'person'
-}
-
 export default function Entities() {
-  const [graph, setGraph] = useState<InvestigationGraph | null>(null)
+  const { caseId } = useParams()
+
+  const [caseInfo, setCaseInfo] = useState<CaseInfo | null>(null)
+  const [entities, setEntities] = useState<GraphNode[]>([])
   const [search, setSearch] = useState('')
   const [typeFilter, setTypeFilter] = useState('All')
-  const [sortBy, setSortBy] =
-    useState<SortOption>('connections')
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState('')
 
   useEffect(() => {
-    getVisualGraph().then(setGraph)
-  }, [])
+    if (!caseId) {
+      setLoading(false)
+      setError('No case selected.')
+      return
+    }
 
-  const entities = graph?.nodes || []
+    let cancelled = false
 
-  const entityTypes = useMemo(
-    () =>
-      [...new Set(
-        entities.map((entity) => entity.type),
-      )].sort(),
-    [entities],
-  )
+    async function load() {
+      try {
+        setLoading(true)
+        setError('')
+
+        const [loadedCase, graph] = await Promise.all([
+          getCase(caseId),
+          getVisualGraph(caseId),
+        ])
+
+        if (cancelled) return
+
+        setCaseInfo(loadedCase)
+        setEntities(graph.nodes)
+      } catch (err) {
+        if (cancelled) return
+
+        console.error('Failed to load entities:', err)
+        setError(
+          err instanceof Error
+            ? err.message
+            : 'Failed to load entities.',
+        )
+      } finally {
+        if (!cancelled) {
+          setLoading(false)
+        }
+      }
+    }
+
+    load()
+
+    return () => {
+      cancelled = true
+    }
+  }, [caseId])
+
+  const availableTypes = useMemo(() => {
+    const types = new Set(
+      entities.map((entity) => entity.type).filter(Boolean),
+    )
+
+    return [
+      'All',
+      ...Array.from(types).sort((a, b) =>
+        a.localeCompare(b),
+      ),
+    ]
+  }, [entities])
 
   const filteredEntities = useMemo(() => {
     const query = search.trim().toLowerCase()
 
-    const filtered = entities.filter((entity) => {
-      const matchesSearch =
-        !query ||
-        entity.label.toLowerCase().includes(query) ||
-        entity.entity_id.toLowerCase().includes(query) ||
-        entity.type.toLowerCase().includes(query)
+    return entities
+      .filter((entity) => {
+        const matchesType =
+          typeFilter === 'All' ||
+          entity.type.toLowerCase() === typeFilter.toLowerCase()
 
-      const matchesType =
-        typeFilter === 'All' ||
-        entity.type === typeFilter
+        if (!matchesType) return false
 
-      return matchesSearch && matchesType
-    })
+        if (!query) return true
 
-    return [...filtered].sort((a, b) => {
-      if (sortBy === 'name') {
+        return (
+          entity.label.toLowerCase().includes(query) ||
+          entity.entity_id.toLowerCase().includes(query) ||
+          entity.type.toLowerCase().includes(query)
+        )
+      })
+      .sort((a, b) => {
+        if (b.degree !== a.degree) {
+          return b.degree - a.degree
+        }
+
         return a.label.localeCompare(b.label)
-      }
+      })
+  }, [entities, search, typeFilter])
 
-      if (sortBy === 'type') {
-        return a.type.localeCompare(b.type)
-      }
+  const typeCounts = useMemo(() => {
+    const counts: Record<string, number> = {}
 
-      return b.degree - a.degree
-    })
-  }, [entities, search, typeFilter, sortBy])
+    for (const entity of entities) {
+      counts[entity.type] = (counts[entity.type] || 0) + 1
+    }
 
-  const totalConnections = entities.reduce(
-    (sum, entity) => sum + entity.degree,
-    0,
-  )
+    return counts
+  }, [entities])
+
+  if (!caseId) {
+    return (
+      <div className="entities-page">
+        <div className="entities-empty">
+          <h2>No case selected</h2>
+          <p>Select a case before opening the entity workspace.</p>
+        </div>
+      </div>
+    )
+  }
 
   return (
     <div className="entities-page">
-
-      {/* =========================================
-          HEADER
-      ========================================== */}
-
       <header className="entities-header">
-
         <div>
-
           <div className="entities-breadcrumb">
-            <span>Case Workspace</span>
-            <span>/</span>
-            <strong>Entities</strong>
+            Case Workspace / <strong>Entities</strong>
           </div>
 
           <h1>Entities</h1>
 
           <p>
-            Review people, locations, vehicles and other
-            entities extracted from the investigation evidence.
+            Extracted entities connected to the evidence in this
+            investigation.
           </p>
 
+          <div className="entities-case-meta">
+            <span>{caseInfo?.name || 'Investigation'}</span>
+            <span className="mono">{caseId}</span>
+          </div>
         </div>
 
-        <div className="entities-header-stat">
-          <span>TOTAL ENTITIES</span>
-
-          <strong>
-            {entities.length}
-          </strong>
-
-          <small>
-            {totalConnections} connections
-          </small>
-        </div>
-
+        <Link
+          to={`/cases/${caseId}/network`}
+          className="entities-network-link"
+        >
+          Open Network →
+        </Link>
       </header>
 
-
-      {/* =========================================
-          SUMMARY
-      ========================================== */}
-
-      <div className="entities-summary">
-
-        <div className="entity-summary-item">
-
-          <span className="summary-number">
-            {entities.length}
-          </span>
-
-          <span className="summary-label">
-            Entities
-          </span>
-
+      <section className="entities-summary">
+        <div className="entities-summary-card">
+          <strong>{entities.length}</strong>
+          <span>Total entities</span>
         </div>
 
-        <div className="summary-divider" />
-
-        <div className="entity-summary-item">
-
-          <span className="summary-number">
-            {entityTypes.length}
-          </span>
-
-          <span className="summary-label">
-            Entity Types
-          </span>
-
-        </div>
-
-        <div className="summary-divider" />
-
-        <div className="entity-summary-item">
-
-          <span className="summary-number">
-            {totalConnections}
-          </span>
-
-          <span className="summary-label">
-            Connected Records
-          </span>
-
-        </div>
-
-      </div>
-
-
-      {/* =========================================
-          CONTROLS
-      ========================================== */}
-
-      <section className="entities-controls">
-
-        <div className="entity-search">
-
-          <svg
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="1.6"
-            strokeLinecap="round"
-            strokeLinejoin="round"
+        {Object.entries(typeCounts).map(([type, count]) => (
+          <div
+            className="entities-summary-card"
+            key={type}
           >
-            <circle cx="11" cy="11" r="7" />
-            <path d="m20 20-4-4" />
+            <strong>{count}</strong>
+            <span>{type}</span>
+          </div>
+        ))}
+      </section>
+
+      <section className="entities-toolbar">
+        <div className="entities-search">
+          <svg viewBox="0 0 24 24" aria-hidden="true">
+            <circle cx="11" cy="11" r="6.5" />
+            <path d="m16 16 5 5" />
           </svg>
 
           <input
-            type="text"
             value={search}
             onChange={(event) =>
               setSearch(event.target.value)
             }
-            placeholder="Search by name, identifier or type..."
+            placeholder="Search entities..."
           />
-
         </div>
 
+        <select
+          value={typeFilter}
+          onChange={(event) =>
+            setTypeFilter(event.target.value)
+          }
+        >
+          {availableTypes.length > 1
+            ? availableTypes.map((type) => (
+                <option key={type} value={type}>
+                  {type}
+                </option>
+              ))
+            : ENTITY_TYPES.map((type) => (
+                <option key={type} value={type}>
+                  {type}
+                </option>
+              ))}
+        </select>
 
-        <label className="entity-filter">
-
-          <span>
-            Entity type
-          </span>
-
-          <select
-            value={typeFilter}
-            onChange={(event) =>
-              setTypeFilter(event.target.value)
-            }
-          >
-            <option value="All">
-              All
-            </option>
-
-            {entityTypes.map((type) => (
-              <option
-                key={type}
-                value={type}
-              >
-                {type}
-              </option>
-            ))}
-
-          </select>
-
-        </label>
-
-
-        <label className="entity-filter">
-
-          <span>
-            Sort
-          </span>
-
-          <select
-            value={sortBy}
-            onChange={(event) =>
-              setSortBy(
-                event.target.value as SortOption,
-              )
-            }
-          >
-            <option value="connections">
-              Connections
-            </option>
-
-            <option value="name">
-              Name
-            </option>
-
-            <option value="type">
-              Type
-            </option>
-
-          </select>
-
-        </label>
-
+        <div className="entities-result-count">
+          {filteredEntities.length} shown
+        </div>
       </section>
 
+      {loading ? (
+        <div className="entities-empty">
+          <div className="entities-loader" />
+          <p>Loading entities...</p>
+        </div>
+      ) : error ? (
+        <div className="entities-empty entities-error">
+          <h2>Unable to load entities</h2>
+          <p>{error}</p>
+        </div>
+      ) : filteredEntities.length === 0 ? (
+        <div className="entities-empty">
+          <h2>No entities found</h2>
+          <p>
+            Upload and analyze evidence, or change the current
+            search/filter.
+          </p>
+        </div>
+      ) : (
+        <section className="entities-grid">
+          {filteredEntities.map((entity) => (
+            <EntityCard
+              key={entity.entity_id}
+              entity={entity}
+              caseId={caseId}
+            />
+          ))}
+        </section>
+      )}
 
-      {/* =========================================
-          ENTITY TABLE
-      ========================================== */}
+      {!loading && entities.length > 0 && (
+        <div className="entities-footer">
+          Showing {filteredEntities.length} of {entities.length}{' '}
+          entities
+        </div>
+      )}
+    </div>
+  )
+}
 
-      <section className="entities-table-card">
-
-        <div className="entities-table-top">
-
-          <div>
-
-            <span className="section-step">
-              INVESTIGATION ENTITIES
-            </span>
-
-            <h2>
-              Entity Registry
-            </h2>
-
-          </div>
-
-          <span className="entity-count mono">
-            {filteredEntities.length} SHOWN
-          </span>
-
+function EntityCard({
+  entity,
+  caseId,
+}: {
+  entity: GraphNode
+  caseId: string
+}) {
+  return (
+    <Link
+      to={`/cases/${caseId}/entities/${encodeURIComponent(
+        entity.entity_id,
+      )}`}
+      className="entity-list-card"
+    >
+      <div className="entity-list-card-header">
+        <div
+          className={`entity-list-icon ${normalizeType(
+            entity.type,
+          )}`}
+        >
+          <EntityIcon type={entity.type} />
         </div>
 
-
-        <div className="entities-table">
-
-          <div className="entities-table-header">
-
-            <span>Entity</span>
-            <span>Type</span>
-            <span>Connections</span>
-            <span>Identifier</span>
-            <span />
-
-          </div>
-
-
-          {filteredEntities.length > 0 ? (
-
-            filteredEntities.map(
-              (entity: GraphNode) => {
-
-                const entityClass =
-                  getEntityClass(entity.type)
-
-                return (
-
-                  <Link
-                    key={entity.entity_id}
-                    to={`/cases/IIS-2026-001/entities/${entity.entity_id}`}
-                    className="entity-table-row"
-                  >
-
-                    <div className="entity-name-cell">
-
-                      <div
-                        className={`entity-list-icon ${entityClass}`}
-                      >
-                        <EntityIcon
-                          type={entity.type}
-                        />
-                      </div>
-
-                      <div className="entity-name-content">
-
-                        <strong>
-                          {entity.label}
-                        </strong>
-
-                        <small>
-                          {entity.type}
-                        </small>
-
-                      </div>
-
-                    </div>
-
-
-                    <div className="entity-type-cell">
-
-                      <span
-                        className={`entity-type-badge ${entityClass}`}
-                      >
-                        {entity.type}
-                      </span>
-
-                    </div>
-
-
-                    <div className="entity-connections-cell">
-
-                      <strong>
-                        {entity.degree}
-                      </strong>
-
-                      <span>
-                        connected records
-                      </span>
-
-                    </div>
-
-
-                    <div className="entity-id-cell mono">
-                      {entity.entity_id}
-                    </div>
-
-
-                    <div className="entity-arrow">
-                      →
-                    </div>
-
-                  </Link>
-                )
-              },
-            )
-
-          ) : (
-
-            <div className="entities-empty">
-
-              <strong>
-                No entities found
-              </strong>
-
-              <span>
-                Try changing the search or entity type filter.
-              </span>
-
-            </div>
-
-          )}
-
-        </div>
-
-      </section>
-
-
-      {/* =========================================
-          DISCLAIMER
-      ========================================== */}
-
-      <div className="entities-disclaimer">
-
-        Entity records are extracted from ingested investigation
-        sources. Presence in the registry does not establish
-        criminal involvement, intent or guilt.
-
+        <span className="entity-list-type">
+          {entity.type}
+        </span>
       </div>
 
-    </div>
+      <h3>{entity.label}</h3>
+
+      <div className="entity-list-id mono">
+        {entity.entity_id}
+      </div>
+
+      <div className="entity-list-footer">
+        <span>
+          <strong>{entity.degree}</strong> connections
+        </span>
+
+        <span>View →</span>
+      </div>
+    </Link>
   )
 }

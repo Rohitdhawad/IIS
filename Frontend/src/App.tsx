@@ -129,7 +129,7 @@ export default function App() {
 
           {/* Individual Entity */}
           <Route
-            path="entities/:id"
+            path="entities/:entityId"
             element={<EntityDetail />}
           />
 
